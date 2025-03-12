@@ -1,0 +1,300 @@
+#######################################################################
+#
+# Package Name: GDSAnnotator
+#
+# Description:
+#     Variant annotation data manipulation using GDS files
+#
+
+
+# Internal functions
+
+.cat <- function(...) cat(..., "\n", sep="")
+
+
+.gds_new <- function(out_fn, compress, var_id_st="int32")
+{
+    outfile <- createfn.gds(out_fn)
+    on.exit(closefn.gds(outfile))
+    put.attr.gdsn(outfile$root, "FileFormat", "SEQ_ARRAY")
+    put.attr.gdsn(outfile$root, "FileVersion", "v1.0")
+    addfolder.gdsn(outfile, "description")
+    # add sample.id
+    add.gdsn(outfile, "sample.id", integer())
+    # add variant.id
+    add.gdsn(outfile, "variant.id", storage=var_id_st, compress=compress)
+    # add position
+    add.gdsn(outfile, "position", storage="int32", compress=compress)
+    # add chromosome
+    add.gdsn(outfile, "chromosome", storage="string", compress=compress)
+    # add allele
+    add.gdsn(outfile, "allele", storage="string", compress=compress)
+    # add a folder for genotypes
+    nd <- addfolder.gdsn(outfile, "genotype")
+    put.attr.gdsn(nd, "VariableName", "GT")
+    put.attr.gdsn(nd, "Description", "Genotype")
+    # add phase folder
+    addfolder.gdsn(outfile, "phase")
+    # add annotation folder
+    nd_annot <- addfolder.gdsn(outfile, "annotation")
+    # add id
+    add.gdsn(nd_annot, "id", storage="string", compress=compress)
+    # add qual
+    add.gdsn(nd_annot, "qual", storage="float32", compress=compress)
+    # add filter
+    nd <- add.gdsn(nd_annot, "filter", storage="int32", compress=compress)
+    put.attr.gdsn(nd, "R.class", "factor")
+    put.attr.gdsn(nd, "R.levels", "PASS")
+    put.attr.gdsn(nd, "Description", "All filters passed")
+    # VCF INFO
+    addfolder.gdsn(nd_annot, "info")
+    # output
+    on.exit()
+    outfile
+}
+
+
+
+#######################################################################
+# Convert FAVOR CSV files to a SeqArray GDS file
+#
+
+seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
+    root="FAVOR", use_float32=TRUE, verbose=TRUE)
+{
+    # check
+    stopifnot(is.character(csv_fn), length(csv_fn)>0L)
+    stopifnot(is.character(out_fn), length(out_fn)==1L)
+    compress <- match.arg(compress)
+    stopifnot(is.character(root), length(root)==1L)
+    stopifnot(is.logical(use_float32), length(use_float32)==1L)
+    stopifnot(is.logical(verbose), length(verbose)==1L, !is.na(verbose))
+    if (length(csv_fn) > 1L)
+    {
+        # check the header of each file, should be the same!
+        s0 <- readLines(csv_fn[1L], n=1L)
+        if (length(s0) != 1L)
+            stop("No header line in the first file of 'csv_fn'.")
+        for (i in 2L:length(csv_fn))
+        {
+            s <- readLines(csv_fn[i], n=1L)
+            if (length(s)!=1L || s!=s0)
+                stop(sprintf("Error in the header of 'csv_fn[%d]'", i))
+        }
+    }
+
+    # compression algorithm
+    map_compress <- c(LZMA="LZMA_ra", ZIP="ZIP_RA", none="")
+    compress1 <- compress2 <- map_compress[compress]
+    if (compress=="LZMA") compress1 <- "ZIP_RA"
+
+    # create the gds file
+    if (verbose)
+    {
+        .cat("FAVOR => GDS (", date(), "):")
+        .cat("    output: ", out_fn)
+        .cat("    compression: ", compress)
+    }
+    outfile <- .gds_new(out_fn, compress1, var_id_st="double")
+    on.exit(closefn.gds(outfile))
+    nm_lst <- c("vid", "position", "chromosome", "ref_vcf", "alt_vcf", "variant_vcf")
+    nd_root <- index.gdsn(outfile, "annotation/info")
+    if (!is.na(root) && root!="")
+        nd_root <- addfolder.gdsn(nd_root, root)
+
+    # load csv
+    for (i in seq_along(csv_fn))
+    {
+        .cat("Reading ", csv_fn[i], " ...")
+        df <- read_csv(csv_fn[i], progress=verbose, show_col_types=FALSE)
+        .cat("    ", nrow(df), " x ", ncol(df))
+        if (!all(nm_lst %in% colnames(df)))
+        {
+            stop("The csv header should contain all of ",
+                paste(nm_lst, collapse=", "), ".")
+        }
+        # basic
+        append.gdsn(index.gdsn(outfile, "variant.id"), df$vid)
+        append.gdsn(index.gdsn(outfile, "position"), df$position)
+        append.gdsn(index.gdsn(outfile, "chromosome"), df$chromosome)
+        append.gdsn(index.gdsn(outfile, "allele"), paste0(df$ref_vcf, ",", df$alt_vcf))
+        append.gdsn(index.gdsn(outfile, "annotation/id"), df$variant_vcf)
+        append.gdsn(index.gdsn(outfile, "annotation/qual"), rep(NaN, nrow(df)))
+        append.gdsn(index.gdsn(outfile, "annotation/filter"), rep(1L, nrow(df)))
+        # annotation
+        for (nm in setdiff(colnames(df), nm_lst))
+        {
+            if (verbose) .cat("    [adding ", nm, "]\t")
+            v <- df[[nm]]
+            if (i == 1L)
+            {
+                st <- typeof(v)
+                if (st=="double" && isTRUE(use_float32)) st <- "float32"
+                nd <- suppressWarnings(
+                    add.gdsn(nd_root, nm, v, storage=st, compress=compress1))
+            } else {
+                nd <- suppressWarnings(append.gdsn(index.gdsn(nd_root, nm), v))
+            }
+            if (verbose) { cat("    "); print(nd) }
+        }
+        remove(df)
+    }
+
+    # close the nodes
+    for (nm in c("variant.id", "position", "chromosome", "allele",
+        "annotation/id", "annotation/qual", "annotation/filter"))
+    {
+        nd <- index.gdsn(outfile, nm)
+        readmode.gdsn(nd)
+        SeqArray:::.DigestCode(nd, verbose=FALSE)
+    }
+    for (nm in setdiff(colnames(df), nm_lst))
+    {
+        nd <- index.gdsn(nd_root, nm)
+        readmode.gdsn(nd)
+        SeqArray:::.DigestCode(nd, verbose=FALSE)
+    }
+
+    # recompress?
+    on.exit()
+    if (compress1 != compress2)
+    {
+        if (verbose)
+            .cat("Recompressing (", date(), ") ...")
+        closefn.gds(outfile)
+        cleanup.gds(out_fn, verbose=FALSE)
+        seqRecompress(out_fn, compress=compress, verbose=verbose)
+    } else {
+        if (verbose)
+            cat("Optimize the access efficiency ...\n")
+        closefn.gds(outfile)
+        cleanup.gds(out_fn, verbose=verbose)
+    }
+
+    if (verbose) .cat("Done (", date(), ")")
+    # output
+    invisible(normalizePath(out_fn))
+}
+
+
+
+#######################################################################
+# Convert gnomAD VCF to a SeqArray GDS file
+#
+
+seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
+    root="gnomAD", verbose=TRUE)
+{
+    # check
+    stopifnot(is.character(vcf_fn), length(vcf_fn)>0L)
+    stopifnot(is.character(out_fn), length(out_fn)==1L)
+    compress <- match.arg(compress)
+    stopifnot(is.character(root), length(root)==1L)
+    stopifnot(is.logical(verbose), length(verbose)==1L, !is.na(verbose))
+
+    # compression algorithm
+    map_compress <- c(LZMA="LZMA_RA", ZIP="ZIP_RA", none="")
+    compress1 <- compress2 <- map_compress[compress]
+    if (compress=="LZMA") compress1 <- "ZIP_RA"
+
+    # create the gds file
+    if (verbose)
+    {
+        .cat("gnomAD VCF => GDS (", date(), "):")
+        .cat("    output: ", out_fn)
+        .cat("    compression: ", compress)
+    }
+
+    # import from VCF
+    seqVCF2GDS(vcf_fn, out_fn, storage.option=compress1, verbose=verbose)
+
+    # recompress?
+    if (compress1 != compress2)
+    {
+        if (verbose)
+            .cat("Recompressing (", date(), ") ...")
+        seqRecompress(out_fn, compress=compress, verbose=verbose)
+    }
+
+    if (verbose) .cat("Done (", date(), ")")
+    # output
+    invisible(normalizePath(out_fn))
+}
+
+
+
+#######################################################################
+# Convert Ensembl-VEP to a SeqArray GDS file
+#
+
+.vep_vcf <- function(vcf_fn, out_fn, compress, root, verbose)
+{
+    # vcf => gds
+    seqVCF2GDS(vcf_fn, out_fn, storage.option=compress, optimize=FALSE, verbose=verbose)
+    # split CSQ (Consequence annotations from Ensembl VEP)    
+    f <- seqOpen(out_fn, readonly=FALSE)
+    # need CSQ
+    nm_root <- paste0("annotation/info/", root)
+    nm_root2 <- paste0("annotation/info/", root, "2")
+    nd <- index.gdsn(f, nm_root)
+    desp <- get.attr.gdsn(nd)$Description
+    if (!is.character(desp))
+        stop("CSQ information is not found!")
+    desp <- gsub("^.*Format:", "", desp)
+    # sub fields in CSQ
+    nm_lst <- trimws(unlist(strsplit(desp, "|", fixed=TRUE)))
+    # new directory
+    seqAddValue(f, nm_root2, NULL)
+    csq <- seqGetData(f, nm_root, .tolist=TRUE)
+    for (i in seq_along(nm_lst))
+    {
+        if (verbose)
+            cat("    ", nm_lst[i], " ...\n    ", sep="")
+        v <- lapply(csq, function(s)
+            vapply(strsplit(s, "|", fixed=TRUE), `[`, "", i=i))
+        suppressWarnings(
+            seqAddValue(f, paste0(nm_root2, "/", nm_lst[i]), v,
+                compress=compress, verbose=verbose, verbose.attr=FALSE))
+    }
+    on.exit(seqClose(f))
+}
+
+
+seqToGDS_VEP <- function(input_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
+    root="CSQ", verbose=TRUE)
+{
+    # check
+    stopifnot(is.character(input_fn), length(input_fn)>0L)
+    stopifnot(is.character(out_fn), length(out_fn)==1L)
+    compress <- match.arg(compress)
+    stopifnot(is.character(root), length(root)==1L)
+    stopifnot(is.logical(verbose), length(verbose)==1L, !is.na(verbose))
+
+    # compression algorithm
+    map_compress <- c(LZMA="LZMA_RA", ZIP="ZIP_RA", none="")
+    compress1 <- compress2 <- map_compress[compress]
+    if (compress=="LZMA") compress1 <- "ZIP_RA"
+
+    # create the gds file
+    if (verbose)
+    {
+        .cat("Ensembl-VEP VCF => GDS (", date(), "):")
+        .cat("    output: ", out_fn)
+        .cat("    compression: ", compress)
+    }
+
+    # import from VCF
+    .vep_vcf(input_fn, out_fn, compress1, root, verbose)
+
+    # recompress?
+    if (compress1 != compress2)
+    {
+        if (verbose)
+            .cat("Recompressing (", date(), ") ...")
+        seqRecompress(out_fn, compress=compress, verbose=verbose)
+    }
+
+    if (verbose) .cat("Done (", date(), ")")
+    # output
+    invisible(normalizePath(out_fn))
+}
