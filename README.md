@@ -19,11 +19,6 @@ Release version: -
 [http://www.bioconductor.org/packages/GDSAnnotator](http://www.bioconductor.org/packages/GDSAnnotator)
 
 
-## Citation
-
---
-
-
 ## Installation
 
 * Bioconductor repository:
@@ -51,6 +46,7 @@ library(GDSAnnotator)
 | seqToGDS_gnomAD | Convert gnomAD VCF files to GDS |
 | seqToGDS_VEP    | Convert Ensembl VEP VCF output to GDS |
 | seqToGDS_SnpEff | Convert SnpEff VCF output to GDS |
+| seqAnnotate     | Annotate variants using the annotation stored in GDS |
 
 
 ## See also
