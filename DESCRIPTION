@@ -11,11 +11,14 @@ Suggests: Biobase, BiocGenerics, BiocParallel, RUnit, Rcpp, SNPRelate, crayon,
 Authors@R: c(person("Xiuwen", "Zheng", role=c("aut", "cre"),
         email="xiuwen.zheng@abbvie.com", comment=c(ORCID="0000-0002-1390-0708")),
         person("Yuantao (Raven)", "Chen", role="ctb"))
-Description: Variant annotation data manipulation
+Description: GDSAnnotator is designed to streamline the manipulation and integration of
+        whole-genome variant annotation data using GDS files. It provides user-friendly
+        functions for annotating genomic variants, supporting diverse annotation sources
+        while leveraging the optimized performance of GDS-based storage. The package
+        enables users to efficiently query, filter, and integrate variant annotations,
+        making it a valuable resource for large-scale genomic analyses.
 License: GPL-3
 VignetteBuilder: knitr
 ByteCompile: TRUE
 LazyData: true
-URL: https://github.com/zhengxwen/GDSAnnotator
-BugReports: https://github.com/zhengxwen/GDSAnnotator/issues
-biocViews: Infrastructure, DataRepresentation, Sequencing, Genetics
+biocViews: Infrastructure, DataRepresentation, Sequencing, Genetics, Annotation

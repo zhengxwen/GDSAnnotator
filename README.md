@@ -11,9 +11,10 @@ Variant annotation is a critical step in genomic data analysis, facilitating the
 
 GDSAnnotator is an R package designed for fast and memory-efficient annotation of variants stored in GDS files. It integrates seamlessly into Bioconductor tools, and utilizes external data resources, e.g, Ensembl Variant Effect Predictor ([VEP](https://useast.ensembl.org/info/docs/tools/vep/index.html)) and FAVOR ([Functional Annotation of Variants Online Resource](https://favor.genohub.org)), to provide comprehensive functional annotations, including predicted variant effects and functional characteristics of non-coding variants. Compared to a plain text file, GDS format is 30-40 times more space-efficient when storing whole-genome annotations of FAVOR.
 
+
 ## Bioconductor:
 
-Release Version: -
+Release version: -
 
 [http://www.bioconductor.org/packages/GDSAnnotator](http://www.bioconductor.org/packages/GDSAnnotator)
 
@@ -42,7 +43,7 @@ library(GDSAnnotator)
 ```
 
 
-## Key Functions in GDSAnnotator
+## Key functions in GDSAnnotator
 
 | Function        | Description |
 |:----------------|:-------------------------------------------|
@@ -52,6 +53,6 @@ library(GDSAnnotator)
 | seqToGDS_SnpEff | Convert SnpEff VCF output to GDS |
 
 
-## See Also
+## See also
 
 * [SeqArray](https://www.bioconductor.org/packages/SeqArray): Data management of large-scale whole-genome sequence variant calls using GDS files
