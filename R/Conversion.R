@@ -86,7 +86,7 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     # compression algorithm
     map_compress <- c(LZMA="LZMA_ra", ZIP="ZIP_RA", none="")
     compress1 <- compress2 <- map_compress[compress]
-    if (compress=="LZMA") compress1 <- "ZIP_RA"
+    if (compress=="LZMA") compress1 <- "ZIP_RA"  # reduce memory usage
 
     # create the gds file
     if (verbose)
@@ -195,7 +195,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     # compression algorithm
     map_compress <- c(LZMA="LZMA_RA", ZIP="ZIP_RA", none="")
     compress1 <- compress2 <- map_compress[compress]
-    if (compress=="LZMA") compress1 <- "ZIP_RA"
+    if (compress=="LZMA") compress1 <- "ZIP_RA"  # reduce memory usage
 
     # create the gds file
     if (verbose)
@@ -233,13 +233,14 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     seqVCF2GDS(vcf_fn, out_fn, storage.option=compress, optimize=FALSE, verbose=verbose)
     # split CSQ (Consequence annotations from Ensembl VEP)    
     f <- seqOpen(out_fn, readonly=FALSE)
+    on.exit(seqClose(f))
     # need CSQ
     nm_root <- paste0("annotation/info/", root)
     nm_root2 <- paste0("annotation/info/", root, "2")
     nd <- index.gdsn(f, nm_root)
     desp <- get.attr.gdsn(nd)$Description
     if (!is.character(desp))
-        stop("CSQ information is not found!")
+        stop(root, " information is not found!")
     desp <- gsub("^.*Format:", "", desp)
     # sub fields in CSQ
     nm_lst <- trimws(unlist(strsplit(desp, "|", fixed=TRUE)))
@@ -256,15 +257,14 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
             seqAddValue(f, paste0(nm_root2, "/", nm_lst[i]), v,
                 compress=compress, verbose=verbose, verbose.attr=FALSE))
     }
-    on.exit(seqClose(f))
+    invisible()
 }
 
-
-seqToGDS_VEP <- function(input_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
+seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     root="CSQ", verbose=TRUE)
 {
     # check
-    stopifnot(is.character(input_fn), length(input_fn)>0L)
+    stopifnot(is.character(vcf_fn), length(vcf_fn)>0L)
     stopifnot(is.character(out_fn), length(out_fn)==1L)
     compress <- match.arg(compress)
     stopifnot(is.character(root), length(root)==1L)
@@ -273,7 +273,7 @@ seqToGDS_VEP <- function(input_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     # compression algorithm
     map_compress <- c(LZMA="LZMA_RA", ZIP="ZIP_RA", none="")
     compress1 <- compress2 <- map_compress[compress]
-    if (compress=="LZMA") compress1 <- "ZIP_RA"
+    if (compress=="LZMA") compress1 <- "ZIP_RA"  # reduce memory usage
 
     # create the gds file
     if (verbose)
@@ -284,7 +284,7 @@ seqToGDS_VEP <- function(input_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     }
 
     # import from VCF
-    .vep_vcf(input_fn, out_fn, compress1, root, verbose)
+    .vep_vcf(vcf_fn, out_fn, compress1, root, verbose)
 
     # recompress?
     if (compress1 != compress2)
@@ -298,3 +298,89 @@ seqToGDS_VEP <- function(input_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     # output
     invisible(normalizePath(out_fn))
 }
+
+
+
+#######################################################################
+# Convert SnpEff to a SeqArray GDS file
+#
+
+.snpeff_vcf <- function(vcf_fn, out_fn, compress, root_lst, verbose)
+{
+    # vcf => gds
+    seqVCF2GDS(vcf_fn, out_fn, storage.option=compress, optimize=FALSE, verbose=verbose)
+    # split CSQ (Consequence annotations from Ensembl VEP)    
+    f <- seqOpen(out_fn, readonly=FALSE)
+    on.exit(seqClose(f))
+    # for ANN, LOF & NMD
+    for (root in root_lst)
+    {
+        nm_root <- paste0("annotation/info/", root)
+        nm_root2 <- paste0("annotation/info/", root, "2")
+        nd <- index.gdsn(f, nm_root)
+        desp <- get.attr.gdsn(nd)$Description
+        if (!is.character(desp))
+            stop(root, " information is not found!")
+        # columns
+        s <- regmatches(desp, regexpr("'.*'", desp))
+        if (!length(s))
+            stop("No column names!")
+        s <- gsub("'|\\s", "", s)
+        s <- gsub("/", "-", s, fixed=TRUE)
+        nm_lst <- trimws(unlist(strsplit(s, "|", fixed=TRUE)))
+        # new directory
+        seqAddValue(f, nm_root2, NULL)
+        ann <- seqGetData(f, nm_root, .tolist=TRUE)
+        for (i in seq_along(nm_lst))
+        {
+            if (verbose)
+                cat("    ", nm_lst[i], " ...\n    ", sep="")
+            v <- lapply(ann, function(s)
+                vapply(strsplit(s, "|", fixed=TRUE), `[`, "", i=i))
+            suppressWarnings(
+                seqAddValue(f, paste0(nm_root2, "/", nm_lst[i]), v,
+                    compress=compress, verbose=verbose, verbose.attr=FALSE))
+        }
+    }
+    invisible()
+}
+
+seqToGDS_SnpEff <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
+    root=c("ANN", "LOF", "NMD"), verbose=TRUE)
+{
+    # check
+    stopifnot(is.character(vcf_fn), length(vcf_fn)>0L)
+    stopifnot(is.character(out_fn), length(out_fn)==1L)
+    compress <- match.arg(compress)
+    stopifnot(is.character(root), length(root) > 0)
+    stopifnot(is.logical(verbose), length(verbose)==1L, !is.na(verbose))
+
+    # compression algorithm
+    map_compress <- c(LZMA="LZMA_RA", ZIP="ZIP_RA", none="")
+    compress1 <- compress2 <- map_compress[compress]
+    if (compress=="LZMA") compress1 <- "ZIP_RA"  # reduce memory usage
+
+    # create the gds file
+    if (verbose)
+    {
+        .cat("SnpEff VCF => GDS (", date(), "):")
+        .cat("    output: ", out_fn)
+        .cat("    compression: ", compress)
+    }
+
+    # import from VCF
+    .snpeff_vcf(vcf_fn, out_fn, compress1, root, verbose)
+
+    # recompress?
+    if (compress1 != compress2)
+    {
+        if (verbose)
+            .cat("Recompressing (", date(), ") ...")
+        seqRecompress(out_fn, compress=compress, verbose=verbose)
+    }
+
+    if (verbose) .cat("Done (", date(), ")")
+    # output
+    invisible(normalizePath(out_fn))
+}
+

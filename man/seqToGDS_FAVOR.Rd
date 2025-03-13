@@ -38,3 +38,4 @@ unlink(c("tmp.gds", "tmp_p2.gds"), force=TRUE)
 \keyword{gds}
 \keyword{annotation}
 \keyword{WGS}
+\keyword{FAVOR}
