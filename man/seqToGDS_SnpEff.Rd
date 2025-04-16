@@ -19,10 +19,11 @@ seqToGDS_SnpEff(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     Return the file name of GDS format with an absolute path.
 }
 \references{
-    Cingolani, P., Platts, A., Wang le L., Coon, M., Nguyen, T., Wang, L., Land, S.J.,
-Lu, X., & Ruden, D.M. (2012). A program for annotating and predicting the effects of
-single nucleotide polymorphisms, SnpEff: SNPs in the genome of Drosophila melanogaster
-strain w1118; iso-2; iso-3. Fly, 6(2), 80-92. PMID: 22728672.
+    Cingolani, P., Platts, A., Wang le L., Coon, M., Nguyen, T., Wang, L.,
+Land, S.J., Lu, X., & Ruden, D.M. (2012). A program for annotating and
+predicting the effects of single nucleotide polymorphisms, SnpEff: SNPs in the
+genome of Drosophila melanogaster strain w1118; iso-2; iso-3. Fly, 6(2), 80-92.
+PMID: 22728672.
 }
 
 \author{Xiuwen Zheng}

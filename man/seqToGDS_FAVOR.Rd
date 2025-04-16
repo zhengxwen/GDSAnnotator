@@ -20,9 +20,9 @@ seqToGDS_FAVOR(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     Return the file name of GDS format with an absolute path.
 }
 \references{
-    Zhou H, Arapoglou T, ..., Lin X. FAVOR: Functional Annotation of Variants Online
-Resource and Annotator for Variation across the Human Genome . NAR 2022 Nov 9; gkac966.
-PMID: 36350676. DOI: 10.1093/nar/gkac966.
+    Zhou H, Arapoglou T, ..., Lin X. FAVOR: Functional Annotation of Variants
+Online Resource and Annotator for Variation across the Human Genome.
+NAR 2022 Nov 9; gkac966. PMID: 36350676. DOI: 10.1093/nar/gkac966.
 }
 
 \author{Xiuwen Zheng}

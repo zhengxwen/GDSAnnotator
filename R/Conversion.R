@@ -109,13 +109,14 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 .vep_vcf <- function(vcf_fn, out_fn, compress, root="CSQ", verbose=TRUE)
 {
     # vcf => gds
-    seqVCF2GDS(vcf_fn, out_fn, storage.option=compress, optimize=FALSE, verbose=verbose)
+    seqVCF2GDS(vcf_fn, out_fn, storage.option=compress, optimize=FALSE,
+        verbose=verbose)
     # split CSQ (Consequence annotations from Ensembl VEP)    
     f <- seqOpen(out_fn, readonly=FALSE)
     on.exit(seqClose(f))
     # need CSQ
     nm_root <- paste0("annotation/info/", root)
-    nm_root2 <- paste0("annotation/info/", root, "_list")
+    nm_root2 <- paste0("annotation/info/", root, ".list")
     nd <- index.gdsn(f, nm_root)
     desp <- get.attr.gdsn(nd)$Description
     if (!is.character(desp))
@@ -123,6 +124,8 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     desp <- gsub("^.*Format:", "", desp)
     # sub fields in CSQ
     nm_lst <- trimws(unlist(strsplit(desp, "|", fixed=TRUE)))
+    if (verbose)
+        .cat(paste(c("", nm_lst, ""), collapse="|"))
     # new directory
     seqAddValue(f, nm_root2, NULL)
     csq <- seqGetData(f, nm_root, .tolist=TRUE)
@@ -188,7 +191,8 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     verbose=TRUE)
 {
     # vcf => gds
-    seqVCF2GDS(vcf_fn, out_fn, storage.option=compress, optimize=FALSE, verbose=verbose)
+    seqVCF2GDS(vcf_fn, out_fn, storage.option=compress, optimize=FALSE,
+        verbose=verbose)
     # split CSQ (Consequence annotations from Ensembl VEP)    
     f <- seqOpen(out_fn, readonly=FALSE)
     on.exit(seqClose(f))
@@ -196,7 +200,7 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     for (root in root_lst)
     {
         nm_root <- paste0("annotation/info/", root)
-        nm_root2 <- paste0("annotation/info/", root, "_list")
+        nm_root2 <- paste0("annotation/info/", root, ".list")
         nd <- index.gdsn(f, nm_root)
         desp <- get.attr.gdsn(nd)$Description
         if (!is.character(desp))
@@ -208,6 +212,8 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         s <- gsub("'|\\s", "", s)
         s <- gsub("/", "-", s, fixed=TRUE)
         nm_lst <- trimws(unlist(strsplit(s, "|", fixed=TRUE)))
+        if (verbose)
+            .cat(paste(c("", nm_lst, ""), collapse="|"))
         # new directory
         seqAddValue(f, nm_root2, NULL)
         ann <- seqGetData(f, nm_root, .tolist=TRUE)
