@@ -124,10 +124,10 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     desp <- gsub("^.*Format:", "", desp)
     # sub fields in CSQ
     nm_lst <- trimws(unlist(strsplit(desp, "|", fixed=TRUE)))
-    if (verbose)
-        .cat(paste(c("", nm_lst, ""), collapse="|"))
     # new directory
-    seqAddValue(f, nm_root2, NULL)
+    seqAddValue(f, nm_root2, NULL, verbose=verbose)
+    if (verbose)
+        .cat("    ", paste(nm_lst, collapse=","))
     csq <- seqGetData(f, nm_root, .tolist=TRUE)
     for (i in seq_along(nm_lst))
     {
@@ -212,10 +212,10 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         s <- gsub("'|\\s", "", s)
         s <- gsub("/", "-", s, fixed=TRUE)
         nm_lst <- trimws(unlist(strsplit(s, "|", fixed=TRUE)))
-        if (verbose)
-            .cat(paste(c("", nm_lst, ""), collapse="|"))
         # new directory
-        seqAddValue(f, nm_root2, NULL)
+        seqAddValue(f, nm_root2, NULL, verbose=verbose)
+        if (verbose)
+            .cat("    ", paste(nm_lst, collapse=","))
         ann <- seqGetData(f, nm_root, .tolist=TRUE)
         for (i in seq_along(nm_lst))
         {
