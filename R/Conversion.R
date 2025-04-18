@@ -7,9 +7,10 @@
 #     Data import & Format conversion
 #
 
+# Package-wide variables
+.packageEnv <- new.env()
 
 # Internal functions
-
 .cat <- function(...) cat(..., "\n", sep="")
 
 
@@ -163,6 +164,12 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         .cat("Ensembl-VEP VCF => GDS (", date(), "):")
         .cat("    output: ", out_fn)
         .cat("    compression: ", compress)
+    }
+
+    # load variable names and types
+    if (is.null(.packageEnv$vep))
+    {
+        .packageEnv$vep <- read.csv(system.file(, package="GDSAnnotator", mustWork=TRUE))
     }
 
     # import from VCF
