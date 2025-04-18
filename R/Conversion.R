@@ -132,13 +132,25 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     csq <- seqGetData(f, nm_root, .tolist=TRUE)
     for (i in seq_along(nm_lst))
     {
+        nm <- nm_lst[i]
         if (verbose)
-            cat("    ", nm_lst[i], " ...\n    ", sep="")
+            cat("    ", nm, " ...\n    ", sep="")
         v <- lapply(csq, function(s)
             vapply(strsplit(s, "|", fixed=TRUE), `[`, "", i=i))
-        suppressWarnings(
-            seqAddValue(f, paste0(nm_root2, "/", nm_lst[i]), v,
-                compress=compress, verbose=verbose, verbose.attr=FALSE))
+        j <- match(nm, .packageEnv$vep$Name)
+        desp <- ""
+        if (!is.na(j))
+        {
+            desp <- .packageEnv$vep$Description[j]
+            if (.packageEnv$vep$Type[j] == "numeric")
+                v <- lapply(v, as.numeric)
+        }
+        # add a node       
+        nm <- paste0(nm_root2, "/", nm)
+        suppressWarnings(seqAddValue(f, nm, v, compress=compress,
+            verbose=verbose, verbose.attr=FALSE))
+        nd <- index.gdsn(f, nm)
+        put.attr.gdsn(nd, "Description", desp)
     }
     invisible()
 }
@@ -169,7 +181,14 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     # load variable names and types
     if (is.null(.packageEnv$vep))
     {
-        .packageEnv$vep <- read.csv(system.file(, package="GDSAnnotator", mustWork=TRUE))
+        .packageEnv$vep <- read.csv(system.file("extdata",
+            "vep_output_format.csv", package="GDSAnnotator", mustWork=TRUE))
+        nm <- c("Name", "Description", "Type")
+        if (!all(nm %in% colnames(.packageEnv$vep)))
+        {
+            stop("The internal 'vep_output_format.csv' should have ",
+                "the following columns: ", paste(nm, collapse=","), ".")
+        }
     }
 
     # import from VCF
