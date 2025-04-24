@@ -23,12 +23,12 @@ MOTIF_POS,The relative position of the variation in the aligned TFBP,
 HIGH_INF_POS,a flag indicating if the variant falls in a high information position of a transcription factor binding profile (TFBP),
 MOTIF_SCORE_CHANGE,The difference in motif score of the reference and variant sequences for the TFBP,
 CELL_TYPE,List of cell types and classifications for regulatory feature,
-CANONICAL,a flag indicating if the transcript is denoted as the canonical transcript for this gene,
+CANONICAL,a flag indicating if the transcript is denoted as the canonical transcript for this gene,logical
 CCDS,"the CCDS identifer for this transcript, where applicable",
 INTRON,the intron number (out of total number),
 EXON,the exon number (out of total number),
 DOMAINS,the source and identifer of any overlapping protein domains,
-DISTANCE,Shortest distance from variant to transcript,
+DISTANCE,Shortest distance from variant to transcript,integer
 IND,individual name,
 ZYG,zygosity of individual genotype at this locus,
 SV,IDs of overlapping structural variants,
@@ -76,7 +76,7 @@ PHENO,"Indicates if existing variant is associated with a phenotype, disease or 
 GENE_PHENO,"Indicates if overlapped gene is associated with a phenotype, disease or trait",
 ALLELE_NUM,"Allele number from input; 0 is reference, 1 is first alternate etc",
 MINIMISED,Alleles in this variant have been converted to minimal representation before consequence calculation,
-PICK,indicates if this block of consequence data was picked,
+PICK,indicates if this block of consequence data was picked,logical
 BAM_EDIT,Indicates success or failure of edit using BAM file,
 GIVEN_REF,Reference allele from input,
 USED_REF,Reference allele as used to get consequences,

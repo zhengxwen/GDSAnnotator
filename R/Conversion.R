@@ -130,6 +130,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     if (verbose)
         .cat("    ", paste(nm_lst, collapse=","))
     csq <- seqGetData(f, nm_root, .tolist=TRUE)
+    lg_lst <- c("1", "T", "TRUE", "YES")
     for (i in seq_along(nm_lst))
     {
         nm <- nm_lst[i]
@@ -142,8 +143,11 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         if (!is.na(j))
         {
             desp <- .packageEnv$vep$Description[j]
-            if (.packageEnv$vep$Type[j] == "numeric")
-                v <- lapply(v, as.numeric)
+            v <- switch(.packageEnv$vep$Type[j],
+                integer = lapply(v, as.integer),
+                numeric = lapply(v, as.numeric),
+                logical = lapply(v, is.element, set=lg_lst),
+                v)
         }
         # add a node       
         nm <- paste0(nm_root2, "/", nm)
