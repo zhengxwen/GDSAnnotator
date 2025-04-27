@@ -82,8 +82,7 @@ ann_pos_allele <- function(annot_gds, pos, allele, varnm)
         SeqArray:::.buffer_position(f, clear=TRUE)
         # set a filter to get data
         ii <- seqSetFilter(f, variant.sel=ii, ret.idx=TRUE)$variant_idx
-        ans <- seqGetData(f, paste0("annotation/info/", varnm),
-            .tolist=TRUE)
+        ans <- seqGetData(f, paste0("annotation/info/", varnm), .tolist=NA)
         ans <- DataFrame(ans)
         # check
         rerow <- anyNA(ii) || is.unsorted(ii) || ii[1L] > ii[length(ii)]
