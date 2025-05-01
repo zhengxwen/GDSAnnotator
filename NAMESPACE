@@ -11,7 +11,7 @@ importFrom(SeqArray, seqOpen, seqClose, seqAddValue, seqGetData, seqVCF2GDS,
 importFrom(utils, read.table, read.csv, flush.console, write.table, str, tail,
     type.convert)
 importFrom(readr, read_csv)
-importFrom(S4Vectors, nrun, DataFrame)
+importFrom(S4Vectors, nrun, DataFrame, Rle)
 
 
 # Export all names
