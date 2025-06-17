@@ -145,7 +145,7 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
     # check
     stopifnot(length(chr)==1L || length(chr)==length(pos))
     stopifnot(length(pos) == length(ref))
-    if (!is.null(alt))
+    if (!missing(alt) && !is.null(alt))
     {
         stopifnot(length(pos) == length(alt))
         s <- ref
@@ -200,7 +200,37 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
 }
 
 
+# Annotate a GDS file
+ann_gdsfile <- function(object, annot_gds, varnm, ..., verbose=TRUE)
+{
+    # check
+    stopifnot(inherits(object, "SeqVarGDSClass"))
+    # process
+    map <- ann_chr_pos_allele(
+        seqGetData(object, "$chromosome"),
+        seqGetData(object, "position"),
+        seqGetData(object, "allele"), NULL,
+        annot_gds, "", verbose=verbose)
+    map
+}
+
+
+# Annotate a GDS file with a file name input
+ann_filename <- function(object, annot_gds, varnm, ..., verbose=TRUE)
+{
+    # check
+    stopifnot(is.character(object), length(object)==1L)
+    if (isTRUE(verbose)) .cat("Open ", sQuote(object))
+    object <- seqOpen(object)
+    on.exit(seqClose(object))
+    # process
+    ann_gdsfile(object, annot_gds, varnm, ..., verbose=TRUE)
+}
+
+
 # Set methods
 setMethod("seqAnnotate", signature(object="data.frame"), ann_dataframe)
 setMethod("seqAnnotate", signature(object="DataFrame"), ann_dataframe)
+setMethod("seqAnnotate", signature(object="SeqVarGDSClass"), ann_gdsfile)
+setMethod("seqAnnotate", signature(object="character"), ann_filename)
 
