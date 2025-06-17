@@ -11,7 +11,8 @@ seqToGDS_VEP(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 \arguments{
     \item{vcf_fn}{the path(es) of VCF file from Ensembl-VEP output}
     \item{out_fn}{the file name of output SeqArray GDS file}
-    \item{compress}{}
+    \item{compress}{compression method (LZMA by default), \code{"LZMA"} has
+        a higher compression ratio than \code{"ZIP"}}
     \item{root}{the name of INFO field in the input VCF file, the default is
         \code{"CSQ"}}
     \item{verbose}{if \code{TRUE}, show information}
@@ -31,8 +32,14 @@ DOI:10.1186/s13059-016-0974-4.
 }
 
 \examples{
+# gnomAD v4.1.0 dataset of chromosome 22
+vcf_fn <- system.file("extdata", "example_wgs_sites_chr22_vep.vcf.gz",
+    package="GDSAnnotator")
+
+seqToGDS_VEP(vcf_fn, "tmp.gds")
+
 # delete the temporary file
-unlink(c("tmp.gds", "tmp_p2.gds"), force=TRUE)
+unlink("tmp.gds", force=TRUE)
 }
 
 \keyword{gds}
