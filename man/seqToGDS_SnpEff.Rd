@@ -1,5 +1,5 @@
-\name{seqToGDS_VEP}
-\alias{seqToGDS_VEP}
+\name{seqToGDS_SnpEff}
+\alias{seqToGDS_SnpEff}
 \title{Reformat SnpEff VCF}
 \description{
     Convert SnpEff VCF output to a SeqArray GDS file.
@@ -11,7 +11,8 @@ seqToGDS_SnpEff(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 \arguments{
     \item{vcf_fn}{the path(es) of VCF file from SnpEff output}
     \item{out_fn}{the file name of output SeqArray GDS file}
-    \item{compress}{}
+    \item{compress}{compression method (LZMA by default), \code{"LZMA"} has
+        a higher compression ratio than \code{"ZIP"}}
     \item{root}{the name(s) of INFO field in the input VCF file to be parsed}
     \item{verbose}{if \code{TRUE}, show information}
 }
@@ -32,8 +33,14 @@ PMID: 22728672.
 }
 
 \examples{
+# SnpEff annotation
+vcf_fn <- system.file("extdata", "example_wgs_sites_chr22_snpeff.vcf.gz",
+    package="GDSAnnotator")
+
+seqToGDS_SnpEff(vcf_fn, "tmp.gds")
+
 # delete the temporary file
-unlink(c("tmp.gds", "tmp_p2.gds"), force=TRUE)
+unlink("tmp.gds", force=TRUE)
 }
 
 \keyword{gds}

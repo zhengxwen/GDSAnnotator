@@ -32,7 +32,7 @@ DOI:10.1186/s13059-016-0974-4.
 }
 
 \examples{
-# gnomAD v4.1.0 dataset of chromosome 22
+# Ensembl-VEP annotation
 vcf_fn <- system.file("extdata", "example_wgs_sites_chr22_vep.vcf.gz",
     package="GDSAnnotator")
 
