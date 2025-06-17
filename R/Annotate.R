@@ -13,7 +13,7 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
     standardGeneric("seqAnnotate"))
 
 
-# Open the GDS files with variant annotation
+# Open the GDS file(s) with variant annotation
 .open_annot_gds <- function(gds_fn, verbose=TRUE)
 {
     # check
@@ -48,16 +48,20 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
     ans
 }
 
+# Close the GDS file(s)
 .close_annot_gds <- function(annot_gds)
 {
     lapply(annot_gds, seqClose)
+    invisible()
 }
 
 
 # Annotate with the same chromosome
-ann_pos_allele <- function(annot_gds, pos, allele, varnm, verbose=TRUE)
+ann_pos_allele <- function(annot_gds, annot_gds_idx, pos, allele, varnm,
+    verbose=TRUE)
 {
     # check
+    stopifnot(length(annot_gds)==length(annot_gds_idx))
     stopifnot(is.integer(pos))
     stopifnot(is.character(allele))
     stopifnot(length(pos)==length(allele))
@@ -103,7 +107,8 @@ ann_pos_allele <- function(annot_gds, pos, allele, varnm, verbose=TRUE)
             }
             names(ans) <- varnm
         } else {
-            ans <- DataFrame(variant_idx=ii, file_idx=Rle(1L, length(ii)))
+            ans <- DataFrame(variant_idx=ii,
+                file_idx=Rle(annot_gds_idx[1L], length(ii)))
             if (!is.null(idx)) ans <- ans[idx, ]
         }
     } else {
@@ -117,6 +122,7 @@ ann_pos_allele <- function(annot_gds, pos, allele, varnm, verbose=TRUE)
 }
 
 # Annotate with chromosome, position, reference & alternative alleles
+#   where 'alt' can be NULL to use 'ref' only
 ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
     verbose=TRUE)
 {
@@ -126,7 +132,15 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
     if (!is.null(alt))
     {
         stopifnot(length(pos) == length(alt))
-        ref <- paste0(ref, ",", alt)
+        s <- ref
+        ref <- paste0(ref, ",", alt)  # TODO: optimize
+        if (anyNA(alt))
+        {
+            x <- is.na(alt)
+            ref[x] <- s[x]
+            remove(x)
+        }
+        remove(s)
     }
     stopifnot(is.character(varnm))
     stopifnot(is.logical(verbose), length(verbose)==1L)
@@ -140,14 +154,17 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
     chr_lst <- unique(chr)
     ans <- lapply(chr_lst, function(ch)
     {
-        a <- annot_gds[names(annot_gds) == ch]
-        ann_pos_allele(a, pos, ref, varnm, verbose)
+        ii <- which(names(annot_gds) == ch)
+        a <- annot_gds[ii]
+        ann_pos_allele(a, ii, pos, ref, varnm, verbose)
     })
     # output
     ans[[1L]]
 }
 
 
+# Annotate with a data frame including the columns for
+#   chromosome, position, reference & alternative alleles
 ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
     col_pos="pos", col_ref="ref", col_alt="alt", ..., verbose=TRUE)
 {
