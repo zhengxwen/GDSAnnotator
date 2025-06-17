@@ -42,7 +42,7 @@ library(GDSAnnotator)
 
 | Function        | Description |
 |:----------------|:-------------------------------------------|
-| seqToGDS_FAVOR  | Convert FAVOR csv files to GDS |
+| seqToGDS_FAVOR  | Convert FAVOR CSV files to GDS |
 | seqToGDS_gnomAD | Convert gnomAD VCF files to GDS |
 | seqToGDS_VEP    | Convert Ensembl VEP VCF output to GDS |
 | seqToGDS_SnpEff | Convert SnpEff VCF output to GDS |
