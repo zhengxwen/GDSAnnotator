@@ -11,7 +11,8 @@ Suggests: Biobase, BiocGenerics, BiocParallel, RUnit, Rcpp, SNPRelate, crayon,
         knitr, markdown, rmarkdown, Rsamtools, VariantAnnotation
 Authors@R: c(person("Xiuwen", "Zheng", role=c("aut", "cre"),
         email="xiuwen.zheng@abbvie.com",comment=c(ORCID="0000-0002-1390-0708")),
-        person("Yuantao (Raven)", "Chen", role="ctb"))
+        person("Yuantao (Raven)", "Chen", role="ctb"),
+        person("Hufeng", "Zhou", role="ctb", email="hufengzhou@g.harvard.edu"))
 Description: GDSAnnotator is designed to streamline the manipulation and
         integration of whole-genome variant annotation data using GDS files.
         It provides user-friendly functions for annotating genomic variants,
