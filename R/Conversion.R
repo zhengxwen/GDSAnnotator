@@ -65,13 +65,12 @@ tm <- function() strftime(Sys.time(), "%Y-%m-%d %H:%M:%S")
 #
 
 seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root="gnomAD", verbose=TRUE)
+    verbose=TRUE)
 {
     # check
     stopifnot(is.character(vcf_fn), length(vcf_fn)>0L)
     stopifnot(is.character(out_fn), length(out_fn)==1L)
     compress <- match.arg(compress)
-    stopifnot(is.character(root), length(root)==1L)
     stopifnot(is.logical(verbose), length(verbose)==1L, !is.na(verbose))
 
     # compression algorithm
