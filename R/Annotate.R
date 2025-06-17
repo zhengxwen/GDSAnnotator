@@ -55,6 +55,22 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
     invisible()
 }
 
+# GDS nodes for the INFO field
+.gds_varnm <- function(nm)
+{
+    if (identical(nm, "")) nm <- character()
+    if (length(nm))
+    {
+        if (anyNA(nm)) stop("'varnm' should not have NA_character_.")
+        s <- nm
+        nm <- paste0("annotation/info/", nm)
+        nm[s==":id"] <- "annotation/id"
+        nm[s==":qual"] <- "annotation/qual"
+        nm[s==":filter"] <- "annotation/filter"
+    }
+    nm
+}
+
 
 # Annotate with the same chromosome
 ann_pos_allele <- function(annot_gds, annot_gds_idx, pos, allele, varnm,
@@ -80,7 +96,7 @@ ann_pos_allele <- function(annot_gds, annot_gds_idx, pos, allele, varnm,
         f <- annot_gds[[1L]]
         ptr <- SeqArray:::.buffer_position(f)  # pointer to positions
         allele_nd <- index.gdsn(f, "allele")
-        # call C
+        # call C to find variant indices
         ii <- .Call(SEQ_Find_Position, ptr, allele_nd, pos, allele)
         # clear position buffer
         SeqArray:::.buffer_position(f, clear=TRUE)
@@ -92,7 +108,7 @@ ann_pos_allele <- function(annot_gds, annot_gds_idx, pos, allele, varnm,
                 cat("[", basename(f$filename), "] ", sep="")
             ii <- seqSetFilter(f, variant.sel=ii, ret.idx=TRUE,
                 verbose=verbose)$variant_idx
-            ans <- seqGetData(f, paste0("annotation/info/", varnm), .tolist=NA)
+            ans <- seqGetData(f, varnm, .tolist=NA)
             ans <- DataFrame(ans)
             # check
             rerow <- anyNA(ii) || is.unsorted(ii) || ii[1L] > ii[length(ii)]
@@ -107,8 +123,8 @@ ann_pos_allele <- function(annot_gds, annot_gds_idx, pos, allele, varnm,
             }
             names(ans) <- varnm
         } else {
-            ans <- DataFrame(variant_idx=ii,
-                file_idx=Rle(annot_gds_idx[1L], length(ii)))
+            ans <- DataFrame(file_idx=Rle(annot_gds_idx[1L], length(ii)),
+                variant_idx=ii)
             if (!is.null(idx)) ans <- ans[idx, ]
         }
     } else {
@@ -142,8 +158,11 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
         }
         remove(s)
     }
-    stopifnot(is.character(varnm))
     stopifnot(is.logical(verbose), length(verbose)==1L)
+    # check & process
+    stopifnot(is.character(varnm))
+    if (identical(varnm, "")) varnm <- character()
+    varnm <- .gds_varnm(varnm)
     # check annotation gds file(s)
     stopifnot(is.character(annot_gds), length(annot_gds)>0L)
     # open gds file(s)
@@ -176,7 +195,6 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
     ref <- object[[col_ref]]
     if (is.null(ref)) stop("No 'ref' column.")
     alt <- object[[col_alt]]
-    if (is.null(alt)) stop("No 'alt' column.")
     # process
     ann_chr_pos_allele(chr, pos, ref, alt, annot_gds, varnm, verbose=verbose)
 }
@@ -184,4 +202,5 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
 
 # Set methods
 setMethod("seqAnnotate", signature(object="data.frame"), ann_dataframe)
+setMethod("seqAnnotate", signature(object="DataFrame"), ann_dataframe)
 

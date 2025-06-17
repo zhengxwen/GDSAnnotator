@@ -1,6 +1,7 @@
 \name{seqAnnotate-methods}
 \alias{seqAnnotate}
 \alias{seqAnnotate,data.frame-method}
+\alias{seqAnnotate,DataFrame-method}
 \title{Annotate a list of variants}
 \description{
     Annotate a list of variants using the annotation stored in GDS files.
@@ -9,13 +10,17 @@
 \usage{
 \S4method{seqAnnotate}{data.frame}(object, annot_gds, varnm, col_chr="chr",
     col_pos="pos", col_ref="ref", col_alt="alt", ..., verbose=TRUE)
+\S4method{seqAnnotate}{DataFrame}(object, annot_gds, varnm, col_chr="chr",
+    col_pos="pos", col_ref="ref", col_alt="alt", ..., verbose=TRUE)
 }
 \arguments{
     \item{object}{a data.frame}
     \item{annot_gds}{a character vector for GDS file names or a list of opened
         GDS files}
     \item{varnm}{a character vector for GDS node names without the prefix
-        "annotation/info/"}
+        "annotation/info/"; ":id" for accessing "annotation/id", ":qual" for
+        "annotation/qual", ":filter" for "annotation/filter"; if
+        \code{varnm=character()} or \code{varnm=""}, see details}
     \item{col_chr}{the column name for chromosome}
     \item{col_pos}{the column name for position}
     \item{col_ref}{the column name for the reference alleles}
@@ -27,7 +32,10 @@
     Returns a DataFrame or NULL.
 }
 \details{
-    If \code{object} is.
+    If \code{varnm=character()} or \code{varnm=""}, \code{seqAnnotate} returns
+a DataFrame object with two columns 'file_idx' and 'variant_idx' to indicate
+where the variants are found, and NA in 'variant_idx' if the variant is not
+found.
 }
 
 \author{Xiuwen Zheng}
