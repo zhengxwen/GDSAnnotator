@@ -11,8 +11,8 @@ seqToGDS_FAVOR(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 \arguments{
     \item{csv_fn}{the path(es) of FAVOR csv file}
     \item{out_fn}{the file name of output SeqArray GDS file}
-    \item{compress}{compression method, \code{"LZMA"} has a higher compression
-        ratio than \code{"ZIP"}}
+    \item{compress}{compression method (LZMA by default), \code{"LZMA"} has
+        a higher compression ratio than \code{"ZIP"}}
     \item{root}{specify the GDS node, the annotation will be stored in
         "annotation/info/root"; if \code{root=""}, "annotation/info" is used}
     \item{use_float32}{if \code{TRUE}, use 32-bit float to store floating-point

@@ -13,6 +13,8 @@
 # Internal functions
 .cat <- function(...) cat(..., "\n", sep="")
 
+tm <- function() strftime(Sys.time(), "%Y-%m-%d %H:%M:%S")
+
 
 # create a new SeqArray GDS file
 .gds_new <- function(out_fn, compress, var_id_st="int32")
