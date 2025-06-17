@@ -23,5 +23,4 @@ Description: GDSAnnotator is designed to streamline the manipulation and
 License: GPL-3
 VignetteBuilder: knitr
 ByteCompile: TRUE
-LazyData: true
 biocViews: Infrastructure, DataRepresentation, Sequencing, Genetics, Annotation
