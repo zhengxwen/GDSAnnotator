@@ -44,13 +44,14 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     # create the gds file
     if (verbose)
     {
-        .cat("FAVOR => GDS (", date(), "):")
+        .cat("##< ", tm())
+        .cat("FAVOR CSV => GDS")
         .cat("    output: ", out_fn)
         .cat("    compression: ", compress)
     }
     outfile <- .gds_new(out_fn, compress1, var_id_st="double")
     on.exit(closefn.gds(outfile))
-    nm_lst <- c("vid", "position", "chromosome", "ref_vcf", "alt_vcf", "variant_vcf")
+    nm_lst <- c("position", "chromosome", "ref_vcf", "alt_vcf", "variant_vcf")
     nd_root <- index.gdsn(outfile, "annotation/info")
     if (!is.na(root) && root!="")
         nd_root <- addfolder.gdsn(nd_root, root)
@@ -67,7 +68,12 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
                 paste(nm_lst, collapse=", "), ".")
         }
         # basic
-        append.gdsn(index.gdsn(outfile, "variant.id"), df$vid)
+        if ("vid" %in% colnames(df))
+        {
+            append.gdsn(index.gdsn(outfile, "variant.id"), df$vid)
+        } else {
+            append.gdsn(index.gdsn(outfile, "variant.id"), seq_len(nrow(df)))
+        }
         append.gdsn(index.gdsn(outfile, "position"), df$position)
         append.gdsn(index.gdsn(outfile, "chromosome"), df$chromosome)
         append.gdsn(index.gdsn(outfile, "allele"), paste0(df$ref_vcf, ",", df$alt_vcf))
@@ -113,7 +119,7 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     if (compress1 != compress2)
     {
         if (verbose)
-            .cat("Recompressing (", date(), ") ...")
+            .cat("Recompressing (", tm(), ") ...")
         closefn.gds(outfile)
         cleanup.gds(out_fn, verbose=FALSE)
         seqRecompress(out_fn, compress=compress, verbose=verbose)
@@ -124,7 +130,7 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         cleanup.gds(out_fn, verbose=verbose)
     }
 
-    if (verbose) .cat("Done (", date(), ")")
+    if (verbose) .cat("##> ", tm())
     # output
     invisible(normalizePath(out_fn))
 }
