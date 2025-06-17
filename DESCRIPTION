@@ -2,7 +2,7 @@ Package: GDSAnnotator
 Type: Package
 Title: Whole-genome variant annotation data manipulation using GDS files
 Version: 0.99.0
-Date: 2025-04-27
+Date: 2025-06-16
 Depends: R (>= 3.5.0), gdsfmt (>= 1.32.0), SeqArray (>= 1.48.0)
 Imports: methods, parallel, digest, readr, IRanges, GenomicRanges, GenomeInfoDb,
         Biostrings, S4Vectors
@@ -10,14 +10,15 @@ LinkingTo: gdsfmt
 Suggests: Biobase, BiocGenerics, BiocParallel, RUnit, Rcpp, SNPRelate, crayon,
         knitr, markdown, rmarkdown, Rsamtools, VariantAnnotation
 Authors@R: c(person("Xiuwen", "Zheng", role=c("aut", "cre"),
-        email="xiuwen.zheng@abbvie.com", comment=c(ORCID="0000-0002-1390-0708")),
+        email="xiuwen.zheng@abbvie.com",comment=c(ORCID="0000-0002-1390-0708")),
         person("Yuantao (Raven)", "Chen", role="ctb"))
-Description: GDSAnnotator is designed to streamline the manipulation and integration of
-        whole-genome variant annotation data using GDS files. It provides user-friendly
-        functions for annotating genomic variants, supporting diverse annotation sources
-        while leveraging the optimized performance of GDS-based storage. The package
-        enables users to efficiently query, filter, and integrate variant annotations,
-        making it a valuable resource for large-scale genomic analyses.
+Description: GDSAnnotator is designed to streamline the manipulation and
+        integration of whole-genome variant annotation data using GDS files.
+        It provides user-friendly functions for annotating genomic variants,
+        supporting diverse annotation sources while leveraging the optimized
+        performance of GDS-based storage. The package enables users to
+        efficiently query, filter, and integrate variant annotations, making
+        it a valuable resource for large-scale genomic analyses.
 License: GPL-3
 VignetteBuilder: knitr
 ByteCompile: TRUE
