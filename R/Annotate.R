@@ -144,7 +144,7 @@ ann_pos_allele <- function(annot_gds, annot_gds_idx, pos, allele, varnm,
             # set a filter to get data
             if (verbose)
                 cat("[", basename(f$filename), "] ", sep="")
-            ii <- seqSetFilter(f, variant.sel=ii, ret.idx=TRUE,
+            ii <- seqSetFilter(f, variant.sel=ii, ret.idx=TRUE, warn=FALSE,
                 verbose=verbose)$variant_idx
             ans <- seqGetData(f, varnm, .tolist=NA)
             ans <- DataFrame(ans)
@@ -294,6 +294,11 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         {
             stop("The GDS file should have only one chromosome.")
         }
+        if (verbose)
+        {
+            n <- sum(is.na(map$variant_idx))
+            .cat("Found #: ", nrow(map)-n, " variant(s), Not found #: ", n)
+        }
         # output gds file
         outgds <- object
         if (is.character(add_to_gds))
@@ -314,6 +319,8 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
                 if (!is.null(outgds)) seqClose(outgds)
             }, add=TRUE)
         }
+        if (verbose)
+            .cat("Add new data to ", sQuote(basename(outgds$filename)), ":")
         rootnm <- "annotation/info"
         if (root != "")
         {
@@ -324,8 +331,10 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         colnm <- gsub("^\\:", ".", varnm)
         varnm <- .gds_varnm(varnm)
         f <- annot_gds[[as.integer(map$file_idx[1])]]
+        if (verbose)
+            cat("    [", basename(f$filename), "] ", sep="")
         ii <- seqSetFilter(f, variant.sel=map$variant_idx, ret.idx=TRUE,
-            verbose=verbose)$variant_idx
+            warn=FALSE, verbose=verbose)$variant_idx
         rerow <- anyNA(ii) || is.unsorted(ii) || ii[1L] > ii[length(ii)]
         if (rerow && !is.null(idx)) ii <- ii[idx]
         if (!rerow && !is.null(idx)) { rerow <- TRUE; ii <- idx }
@@ -333,12 +342,16 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         for (i in seq_along(varnm))
         {
             if (verbose)
-                cat("    adding", sQuote(colnm[i]), "...\n    ")
+            {
+                cat("    adding ", sQuote(colnm[i]), " (", tm(), ") ...\n    ",
+                    sep="")
+            }
             # set a filter to get data
             v <- seqGetData(f, varnm[i], .tolist=TRUE)
             if (rerow) v <- v[ii]
             seqAddValue(outgds, paste0(rootnm, "/", colnm[i]), v,
                 replace=TRUE, verbose=verbose, verbose.attr=FALSE)
+            remove(v)
         }
         # optimize ...
         if (is.character(add_to_gds))
