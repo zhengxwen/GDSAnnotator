@@ -267,6 +267,8 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         on.exit(.close_annot_gds(annot_gds))
     # process
     chr <- seqGetData(object, "$chromosome")
+    if (nrun(chr) > 1L)
+        stop(basename(object$filename), " should only contain one chromosome.")
     pos <- seqGetData(object, "position")
     allele <- seqGetData(object, "allele")
     if (isFALSE(add_to_gds) || length(varnm)==0L)
@@ -276,8 +278,17 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
             verbose=verbose)
     } else {
         # when add_to_gds=TRUE or it is a file name
+        # sort position
+        idx <- NULL
+        if (is.unsorted(pos) || pos[1L] > pos[length(pos)])
+        {
+            idx <- order(pos)
+            pos <- pos[idx]; allele <- allele[idx]
+            idx <- order(idx)
+        }
         map <- ann_chr_pos_allele(chr, pos, allele, NULL, annot_gds, varnm="",
             verbose=verbose)
+        remove(chr, pos, allele)
         # check
         if (anyNA(map$file_idx) || length(unique(map$file_idx))>1L)
         {
@@ -296,10 +307,12 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
                 on.exit(seqFilterPop(object))
                 fmt.var <- character()
             }
-            seqExport(object, add_to_gds, fmt.var=fmt.var, verbose=verbose,
-                verbose.clean=FALSE)
+            seqExport(object, add_to_gds, fmt.var=fmt.var, optimize=FALSE,
+                verbose=verbose)
             outgds <- seqOpen(add_to_gds, readonly=FALSE)
-            on.exit(seqClose(outgds), add=TRUE)
+            on.exit({
+                if (!is.null(outgds)) seqClose(outgds)
+            }, add=TRUE)
         }
         rootnm <- "annotation/info"
         if (root != "")
@@ -314,26 +327,29 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         ii <- seqSetFilter(f, variant.sel=map$variant_idx, ret.idx=TRUE,
             verbose=verbose)$variant_idx
         rerow <- anyNA(ii) || is.unsorted(ii) || ii[1L] > ii[length(ii)]
-        idx <- NULL
-        # add
+        if (rerow && !is.null(idx)) ii <- ii[idx]
+        if (!rerow && !is.null(idx)) { rerow <- TRUE; ii <- idx }
+        # add each node
         for (i in seq_along(varnm))
         {
             if (verbose)
-                cat("    adding", colnm[i], "...\n    ")
+                cat("    adding", sQuote(colnm[i]), "...\n    ")
             # set a filter to get data
             v <- seqGetData(f, varnm[i], .tolist=TRUE)
-            if (rerow)
-            {
-                if (!is.null(idx))
-                    v <- v[ii[idx], ]
-                else
-                    v <- v[ii]
-            } else {
-                if (!is.null(idx)) v <- v[idx]
-            }
+            if (rerow) v <- v[ii]
             seqAddValue(outgds, paste0(rootnm, "/", colnm[i]), v,
                 replace=TRUE, verbose=verbose, verbose.attr=FALSE)
         }
+        # optimize ...
+        if (is.character(add_to_gds))
+        {
+            if (verbose)
+                cat("Optimize the access efficiency ...\n")
+            seqClose(outgds)
+            outgds <- NULL
+            cleanup.gds(add_to_gds, verbose=verbose)
+        }
+        # return
         invisible()
     }
 }
