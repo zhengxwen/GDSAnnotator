@@ -36,7 +36,7 @@ extern "C"
 {
 
 // Binary search function
-// Returns the index of the target if found, otherwise -1
+// returns the index of the target if found, otherwise -1
 inline static int BinarySearch(const int arr[], int size, int target)
 {
 	int left = 0;
@@ -46,15 +46,15 @@ inline static int BinarySearch(const int arr[], int size, int target)
 		int mid = left + (right - left) / 2;
 		if (arr[mid] == target)
 		{
-			return mid;  // Target found
+			return mid;  // target found
 		} else if (arr[mid] < target)
 		{
-			left = mid + 1;  // Search in the right half
+			left = mid + 1;  // search in the right half
 		} else {
-			right = mid - 1;  // Search in the left half
+			right = mid - 1;  // search in the left half
 		}
 	}
-	return -1;  // Target not found
+	return -1;  // target not found
 }
 
 LibExport SEXP SEQ_Find_Position(SEXP ptr, SEXP node_allele, SEXP pos,
@@ -97,7 +97,7 @@ COREARRAY_TRY
 				{
 					cur_idx_st = cur_idx_ed + j;
 					const int p = gds_pos[cur_idx_st];
-					// find the bound
+					// find the bound [cur_idx_st, cur_idx_ed)
 					for (; cur_idx_st >= 0; cur_idx_st--)
 						if (gds_pos[cur_idx_st] != p) break;
 					cur_idx_st ++;

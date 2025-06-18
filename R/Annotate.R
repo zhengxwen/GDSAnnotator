@@ -296,8 +296,8 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
                 on.exit(seqFilterPop(object))
                 fmt.var <- character()
             }
-            seqExport(object, add_to_gds, fmt.var=fmt.var, optimize=FALSE,
-                verbose=verbose)
+            seqExport(object, add_to_gds, fmt.var=fmt.var, verbose=verbose,
+                verbose.clean=FALSE)
             outgds <- seqOpen(add_to_gds, readonly=FALSE)
             on.exit(seqClose(outgds), add=TRUE)
         }
