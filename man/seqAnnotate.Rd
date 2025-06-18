@@ -2,6 +2,8 @@
 \alias{seqAnnotate}
 \alias{seqAnnotate,data.frame-method}
 \alias{seqAnnotate,DataFrame-method}
+\alias{seqAnnotate,SeqVarGDSClass-method}
+\alias{seqAnnotate,character-method}
 \title{Annotate a list of variants}
 \description{
     Annotate a list of variants using the annotation stored in GDS files.

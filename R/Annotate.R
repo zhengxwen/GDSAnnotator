@@ -87,17 +87,21 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
 }
 
 # GDS nodes for the INFO field
+.gds_varnm_cvt <- c(
+    ':chromosome'="chromosome", ':position'="position", ':allele'="allele",
+	':id'="annotation/id", ':qual'="annotation/qual",
+	':filter'="annotation/filter")
 .gds_varnm <- function(nm)
 {
-    if (identical(nm, "")) nm <- character()
     if (length(nm))
     {
         if (anyNA(nm)) stop("'varnm' should not have NA_character_.")
-        s <- nm
-        nm <- paste0("annotation/info/", nm)
-        nm[s==":id"] <- "annotation/id"
-        nm[s==":qual"] <- "annotation/qual"
-        nm[s==":filter"] <- "annotation/filter"
+        i <- match(nm, names(.gds_varnm_cvt))
+        if (anyNA(i))
+            nm[is.na(i)] <- paste0("annotation/info/", nm[is.na(i)])
+        j <- which(!is.na(i))
+        if (length(j))
+            nm[j] <- .gds_varnm_cvt[i[j]]
     }
     nm
 }
@@ -235,13 +239,26 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
 
 
 # Annotate a GDS file
-ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE, ...,
-    verbose=TRUE)
+ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
+    no_sample=TRUE, root="", ..., verbose=TRUE)
 {
     # check
     stopifnot(inherits(object, "SeqVarGDSClass"))
     stopifnot(is.logical(add_to_gds) || is.character(add_to_gds),
         length(add_to_gds)==1L, !is.na(add_to_gds))
+    if (isTRUE(add_to_gds))
+    {
+        if (isTRUE(object$readonly))
+            stop("GDS file should not be readonly when 'add_to_gds=TRUE'.")
+        z <- seqSummary(object, "genotype", verbose=TRUE)
+        if (z$dim[3L] != z$seldim[3L])
+            stop("All variants in GDS should be used when 'add_to_gds=TRUE'.")
+    }
+    stopifnot(is.logical(no_sample), length(no_sample)==1L)
+    stopifnot(is.character(root), length(root)==1L, !is.na(root))
+    # check & process
+    stopifnot(is.character(varnm))
+    if (identical(varnm, "")) varnm <- character()
     # check & open annotated gds
     .check_annot_gds(annot_gds)
     if_close_gds <- is.character(annot_gds)
@@ -252,13 +269,72 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE, ...,
     chr <- seqGetData(object, "$chromosome")
     pos <- seqGetData(object, "position")
     allele <- seqGetData(object, "allele")
-    if (is.FALSE(add_to_gds))
+    if (isFALSE(add_to_gds) || length(varnm)==0L)
     {
         # return DataFrame
         ann_chr_pos_allele(chr, pos, allele, NULL, annot_gds, varnm,
             verbose=verbose)
     } else {
-        "sdfads"
+        # when add_to_gds=TRUE or it is a file name
+        map <- ann_chr_pos_allele(chr, pos, allele, NULL, annot_gds, varnm="",
+            verbose=verbose)
+        # check
+        if (anyNA(map$file_idx) || length(unique(map$file_idx))>1L)
+        {
+            stop("The GDS file should have only one chromosome.")
+        }
+        # output gds file
+        outgds <- object
+        if (is.character(add_to_gds))
+        {
+            # add_to_gds is character
+            fmt.var <- NULL
+            if (isTRUE(no_sample))
+            {
+                seqSetFilter(object, sample.sel=integer(), action="push+set",
+                    verbose=FALSE)
+                on.exit(seqFilterPop(object))
+                fmt.var <- character()
+            }
+            seqExport(object, add_to_gds, fmt.var=fmt.var, optimize=FALSE,
+                verbose=verbose)
+            outgds <- seqOpen(add_to_gds, readonly=FALSE)
+            on.exit(seqClose(outgds), add=TRUE)
+        }
+        rootnm <- "annotation/info"
+        if (root != "")
+        {
+            rootnm <- paste0(rootnm, "/", root)
+            seqAddValue(outgds, rootnm, NULL, replace=TRUE, verbose=verbose)
+        }
+        # GDS nodes
+        colnm <- gsub("^\\:", ".", varnm)
+        varnm <- .gds_varnm(varnm)
+        f <- annot_gds[[as.integer(map$file_idx[1])]]
+        ii <- seqSetFilter(f, variant.sel=map$variant_idx, ret.idx=TRUE,
+            verbose=verbose)$variant_idx
+        rerow <- anyNA(ii) || is.unsorted(ii) || ii[1L] > ii[length(ii)]
+        idx <- NULL
+        # add
+        for (i in seq_along(varnm))
+        {
+            if (verbose)
+                cat("    adding", colnm[i], "...\n    ")
+            # set a filter to get data
+            v <- seqGetData(f, varnm[i], .tolist=TRUE)
+            if (rerow)
+            {
+                if (!is.null(idx))
+                    v <- v[ii[idx], ]
+                else
+                    v <- v[ii]
+            } else {
+                if (!is.null(idx)) v <- v[idx]
+            }
+            seqAddValue(outgds, paste0(rootnm, "/", colnm[i]), v,
+                replace=TRUE, verbose=verbose, verbose.attr=FALSE)
+        }
+        invisible()
     }
 }
 
