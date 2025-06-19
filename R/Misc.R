@@ -23,8 +23,8 @@
 }
 
 # Return the counts of unique values in a GDS node
-seqValueCounts <- function(gdsfile, varnm, FUN=NULL, ..., bsize=100000L,
-    verbose=TRUE)
+seqValueCounts <- function(gdsfile, varnm, FUN=NULL, bsize=100000L,
+    verbose=TRUE, ...)
 {
     # check
     stopifnot(is.character(varnm), length(varnm)>0L)
@@ -62,7 +62,7 @@ seqValueCounts <- function(gdsfile, varnm, FUN=NULL, ..., bsize=100000L,
     if (anyNA(z) || any(z!=z[1L]))
         stop("All internal lst[[...]] should have the same dimension.")
 
-    # merge
+    # merge objects of class 'table'
     nm_lst <- lapply(seq_along(dimnames(lst[[1L]])), function(i)
     {
         sort(unique(unlist(lapply(lst, function(x) dimnames(x)[[i]]))),
@@ -91,12 +91,36 @@ seqValueCounts <- function(gdsfile, varnm, FUN=NULL, ..., bsize=100000L,
 }
 
 
-
-# Group the variants and return a SeqUnitListClass object
-seqGroup <- function(gdsfile, varnm, ..., verbose=TRUE)
+# Group the variants by annotation and return a SeqUnitListClass object
+seqUnitGroupAnnot <- function(gdsfile, varnm, by=1L, cond=NULL,
+    bsize=100000L, verbose=TRUE, ...)
 {
     # check
+    stopifnot(is.character(varnm), length(varnm)>0L)
+    stopifnot(is.character(by) || is.numeric(by), length(by)>0L)
+    if (is.character(by)) by <- match(by, varnm)
+    if (anyNA(by) || !all(1<=by | by<=length(varnm)))
+    {
+        stop("'by' should be one or more of ", paste(varnm, collapse=", "),
+            ", or the index/indices.")
+    }
+    cond_err <- "'cond' should be NULL or a list according to 'varnm'."
+    if (is.list(cond))
+    {
+        if (length(cond) != length(varnm))
+            stop(cond_err)
+        a <- vapply(cond, function(x)
+            is.null(x) || is.vector(x) || is.function(x), FALSE)
+        if (!all(a))
+        {
+            a <- which(!a)[1L]
+            stop("'cond[[", a, "]]' should be NULL, a vector or a function.")
+        }
+    } else if (!is.null(cond))
+        stop(cond_err)
+
     stopifnot(is.logical(verbose), length(verbose)==1L)
+    # check gdsfile
     if (is.character(gdsfile))
     {
         gdsfile <- seqOpen(gdsfile, allow.duplicate=TRUE)
@@ -104,5 +128,70 @@ seqGroup <- function(gdsfile, varnm, ..., verbose=TRUE)
     } else {
         stopifnot(inherits(gdsfile, "SeqVarGDSClass"))
     }
+
+    # initialize
+    by2 <- setdiff(seq_along(varnm), by)
+
+    # grouping function
+    group <- function(x, ...)
+    {
+        # condition
+        for (i in seq_along(cond))
+        {
+            v <- cond[[i]]
+            if (is.vector(v))
+            {
+                if (inherits(x[[i]], "SeqVarDataList"))
+                    x[[i]]$data <- x[[i]]$data %in% v
+                else
+                    x[[i]] <- x[[i]] %in% v
+            } else if (is.function(v))
+            {
+                x[[i]] <- v(x[[i]], ...)
+            }
+        }
+        # filter based on condition
+        if (length(by2))
+        {
+            y <- lapply(x[by2], function(z) z$data)  # assuming SeqVarDataList
+            y <- Reduce(`&`, y)
+            for (i in by) x[[i]]$data[!y] <- NA  # exclude based on 'cond'
+        }
+        # group variable
+        grp <- lapply(by, function(i) {
+            s <- x[[i]]$data; s[s==""] <- NA; s
+        })
+        # indices
+        ii <- rep(x[[length(x)]], times=x[[by[1L]]]$length)
+        # grouping
+        ans <- base::split(ii, grp, sep="\xFF")
+        lapply(ans, function(z) sort(unique(z)))
+    }
+
+    # process
+    lst <- seqBlockApply(gdsfile, c(varnm, "$variant_index"), FUN=group,
+        as.is="list", bsize=bsize, .tolist=FALSE, .progress=verbose, ...)
+    i <- vapply(lst, is.null, FALSE)
+    if (any(i)) lst <- lst[!i]
+    if (length(lst)==0L) return(NULL)
+    yyy <<- lst
+
+    # merge
+    ans <- lst[[1L]]
+    for (i in seq_along(lst)[-1L])
+    {
+        v <- lst[[i]]
+        ss <- intersect(names(ans), names(v))
+        for (s in ss)
+            ans[[s]] <- sort(unique(c(ans[[s]], v[[s]])))
+        if (length(ss))
+            v <- v[-match(ss, names(v))]
+        ans <- c(ans, v)
+    }
+    # sort by starting index/position
+    ans <- ans[order(vapply(ans, `[`, 0L, i=1L))]
+
+    # output
+    ans
 }
 
