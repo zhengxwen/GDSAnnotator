@@ -4,7 +4,7 @@
 #
 # Description:
 #     Variant annotation data manipulation using GDS files
-#     Data import & Format conversion
+#     Annotate variants
 #
 
 

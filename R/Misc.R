@@ -51,6 +51,16 @@ seqValueCounts <- function(gdsfile, varnm, FUN=NULL, ..., bsize=100000L,
     # process
     lst <- seqBlockApply(gdsfile, varnm, FUN,
         as.is="list", bsize=bsize, .tolist=FALSE, .progress=verbose, ...)
+    i <- vapply(lst, is.null, FALSE)
+    if (any(i)) lst <- lst[!i]
+    if (length(lst)==0L) return(NULL)
+
+    # check
+    z <- vapply(lst, is.table, FALSE)
+    if (!all(z)) stop("All internal lst[[...]] should be a 'table' object.")
+    z <- vapply(lst, function(x) length(dimnames(x)), 0L)
+    if (anyNA(z) || any(z!=z[1L]))
+        stop("All internal lst[[...]] should have the same dimension.")
 
     # merge
     nm_lst <- lapply(seq_along(dimnames(lst[[1L]])), function(i)
@@ -83,7 +93,7 @@ seqValueCounts <- function(gdsfile, varnm, FUN=NULL, ..., bsize=100000L,
 
 
 # Group the variants and return a SeqUnitListClass object
-seqGroup <- function(gdsfile, verbose=TRUE)
+seqGroup <- function(gdsfile, varnm, ..., verbose=TRUE)
 {
     # check
     stopifnot(is.logical(verbose), length(verbose)==1L)
