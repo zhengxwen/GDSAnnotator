@@ -58,4 +58,5 @@ unlink("tmp.gds", force=TRUE)
 
 \keyword{gds}
 \keyword{annotation}
+\keyword{WES}
 \keyword{WGS}

@@ -174,7 +174,6 @@ seqUnitGroupAnnot <- function(gdsfile, varnm, by=1L, cond=NULL,
     i <- vapply(lst, is.null, FALSE)
     if (any(i)) lst <- lst[!i]
     if (length(lst)==0L) return(NULL)
-    yyy <<- lst
 
     # merge
     ans <- lst[[1L]]
@@ -191,7 +190,42 @@ seqUnitGroupAnnot <- function(gdsfile, varnm, by=1L, cond=NULL,
     # sort by starting index/position
     ans <- ans[order(vapply(ans, `[`, 0L, i=1L))]
 
+    # data.frame
+    if (length(by) > 1L)
+    {
+        v <- strsplit(names(ans), '\xFF', fixed=TRUE)
+        nc <- max(lengths(v))
+        df <- lapply(seq_len(nc), function(i)
+            vapply(v, `[`, "", i=i))
+    } else {
+        df <- list(names(ans))
+    }
+    # column names
+    nm <- names(by)
+    if (is.null(nm))
+    {
+        nm <- names(varnm)[by]
+        if (is.null(nm)) nm <- rep("", length(by))
+    }
+    if (anyNA(nm)) nm[is.na(nm)] <- ""
+    if (any(nm==""))
+        nm[nm==""] <- paste0("group", seq_len(sum(nm=="")))
+    names(df) <- nm
+    # chr, position
+    i1 <- vapply(ans, `[`, 0L, i=1L)
+    i2 <- vapply(ans, function(z) z[max(length(z), 1L)], 0L)
+    ii <- seqSetFilter(gdsfile, variant.sel=c(i1, i2), action="push+set",
+        ret.idx=TRUE, warn=FALSE, verbose=FALSE)$variant_idx
+    on.exit(seqFilterPop(gdsfile), add=TRUE)
+    i1 <- seq_along(ans)
+    df$chr <- seqGetData(gdsfile, "chromosome")[ii[i1]]
+    pos <- seqGetData(gdsfile, "position")[ii]
+    df$start <- pos[i1]
+    df$end <- pos[seq.int(length(ans)+1L, length.out=length(ans))]
+
     # output
+    ans <- list(desp=as.data.frame(df), index=ans)
+    class(ans) <- "SeqUnitListClass"
     ans
 }
 
