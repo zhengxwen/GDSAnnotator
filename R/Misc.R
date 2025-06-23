@@ -8,6 +8,33 @@
 #
 
 
+# Return all annotation in the INFO field
+seqAnnotList <- function(gdsfile)
+{
+    # check gdsfile
+    if (is.character(gdsfile))
+    {
+        gdsfile <- seqOpen(gdsfile, allow.duplicate=TRUE)
+        on.exit(seqClose(gdsfile))
+    } else {
+        stopifnot(inherits(gdsfile, "SeqVarGDSClass"))
+    }
+    # process
+    nd_info <- index.gdsn(gdsfile, "annotation/info")
+    nm <- ls.gdsn(nd_info, recursive=TRUE, include.dirs=FALSE)
+    v <- lapply(nm, function(s) {
+        nd <- index.gdsn(nd_info, s)
+        dp <- objdesp.gdsn(nd)
+        s <- get.attr.gdsn(nd)$Description
+        if (is.null(s)) s <- NA_character_
+        data.frame(type=dp$type, trait=dp$trait, description=s[1L])
+    })
+    df <- do.call(rbind, v)
+    # output
+    DataFrame(name=nm, df)
+}
+
+
 # Call base::table
 .table_var <- function(x, ...)
 {

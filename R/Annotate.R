@@ -368,8 +368,42 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
 }
 
 
+# Annotate "chr-pos-ref-alt"
+ann_variant <- function(object, annot_gds, varnm, split="-|_", ...,
+    verbose=TRUE)
+{
+    # check
+    stopifnot(is.character(object), length(object)>0L)
+    ss <- strsplit(object, split)
+    ns <- lengths(ss)
+    if (any(ns != 4L))
+        stop("Invalid input: ", object[which(ns != 4L)[1L]])
+    chr <- vapply(ss, `[`, "", i=1L)
+    pos <- as.integer(vapply(ss, `[`, "", i=2L))
+    if (anyNA(pos))
+        stop("Invalid position: ", object[which(is.na(pos))[1L]])
+    ref <- vapply(ss, `[`, "", i=3L)
+    alt <- vapply(ss, `[`, "", i=4L)
+    # check & open annotated gds
+    .check_annot_gds(annot_gds)
+    if_close_gds <- is.character(annot_gds)
+    annot_gds <- .open_annot_gds(annot_gds)
+    if (if_close_gds)
+        on.exit(.close_annot_gds(annot_gds))
+    # process
+    ann_chr_pos_allele(chr, pos, ref, alt, annot_gds, varnm, verbose=verbose)
+}
+
+
+# Set methods
+setMethod("seqAnnotate", signature(object="data.frame"), ann_dataframe)
+setMethod("seqAnnotate", signature(object="DataFrame"), ann_dataframe)
+setMethod("seqAnnotate", signature(object="SeqVarGDSClass"), ann_gdsfile)
+setMethod("seqAnnotate", signature(object="character"), ann_variant)
+
+
 # Annotate a GDS file with a file name input
-ann_filename <- function(object, annot_gds, varnm, ..., verbose=TRUE)
+seqAnnotateFile <- function(object, annot_gds, varnm, ..., verbose=TRUE)
 {
     # check
     stopifnot(is.character(object), length(object)==1L)
@@ -379,11 +413,4 @@ ann_filename <- function(object, annot_gds, varnm, ..., verbose=TRUE)
     # process
     ann_gdsfile(object, annot_gds, varnm, ..., verbose=TRUE)
 }
-
-
-# Set methods
-setMethod("seqAnnotate", signature(object="data.frame"), ann_dataframe)
-setMethod("seqAnnotate", signature(object="DataFrame"), ann_dataframe)
-setMethod("seqAnnotate", signature(object="SeqVarGDSClass"), ann_gdsfile)
-setMethod("seqAnnotate", signature(object="character"), ann_filename)
 
