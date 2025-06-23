@@ -14,19 +14,17 @@ GDSAnnotator is an R package designed for fast and memory-efficient annotation o
 
 ## Bioconductor:
 
-Release version: -
-
-[http://www.bioconductor.org/packages/GDSAnnotator](http://www.bioconductor.org/packages/GDSAnnotator)
+Coming soon.
 
 
 ## Installation
 
-* Bioconductor repository:
+* Development version from Github (for developers/testers only):
 ```R
-if (!requireNamespace("BiocManager", quietly=TRUE))
-    install.packages("BiocManager")
-BiocManager::install("GDSAnnotator")
+library("devtools")
+install_github("zhengxwen/GDSAnnotator")
 ```
+The `install_github()` approach requires that you build from source, i.e. `make` and compilers must be installed on your system -- see the [R FAQ](https://cran.r-project.org/faqs.html) for your operating system; you may also need to install dependencies manually.
 
 
 
