@@ -403,14 +403,16 @@ setMethod("seqAnnotate", signature(object="character"), ann_variant)
 
 
 # Annotate a GDS file with a file name input
-seqAnnotateFile <- function(object, annot_gds, varnm, ..., verbose=TRUE)
+seqAnnotateFile <- function(gds_fn, annot_gds, varnm, add_to_gds=FALSE,
+    no_sample=TRUE, root="", ..., verbose=TRUE)
 {
     # check
-    stopifnot(is.character(object), length(object)==1L)
-    if (isTRUE(verbose)) .cat("Open ", sQuote(object))
-    object <- seqOpen(object)
-    on.exit(seqClose(object))
+    stopifnot(is.character(gds_fn), length(gds_fn)==1L)
+    if (isTRUE(verbose)) .cat("Open ", sQuote(gds_fn))
+    gds <- seqOpen(gds_fn)
+    on.exit(seqClose(gds))
     # process
-    ann_gdsfile(object, annot_gds, varnm, ..., verbose=TRUE)
+    ann_gdsfile(gds, annot_gds, varnm, add_to_gds, no_sample, root,
+        ..., verbose=verbose)
 }
 
