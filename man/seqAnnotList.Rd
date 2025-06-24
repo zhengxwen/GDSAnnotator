@@ -11,8 +11,8 @@ seqAnnotList(gdsfile)
     \item{gdsfile}{a \code{SeqVarGDSClass} object or a GDS file name}
 }
 \value{
-    Returns a \code{DataFrame} with the columns 'name', 'type', 'trait' and
-'description'.
+    Returns a \code{DataFrame} with the columns 'name', 'type' (R data type),
+'trait' (data type defined in GDS) and 'description'.
 }
 
 \author{Xiuwen Zheng}
