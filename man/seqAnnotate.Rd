@@ -68,8 +68,6 @@ found.
 }
 
 \examples{
-library(GDSAnnotator)
-
 # FAVOR essential dataset of chromosome 22 (subset)
 annot_gds <- system.file("extdata", "favor_chr22_sub.gds",
     package="GDSAnnotator")
