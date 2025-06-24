@@ -36,13 +36,14 @@ library(GDSAnnotator)
 # FAVOR essential dataset of chromosome 22 (subset)
 annot_gds <- system.file("extdata", "favor_chr22_sub.gds", package="GDSAnnotator")
 
-# list the annotations in the gds file
+# list the annotations in the gds file (return a DataFrame)
 (ann <- seqAnnotList(annot_gds))
 
 varnm <- ann$name  # use all annotation
 snp <- c("22-10510007-T-C", "22-10510038-T-C", "22-10510282-G-C",
     "22-10510303-G-C"  # a fake SNP, return NA
-    )
+    )  # a list of variants
+
 seqAnnotate(snp, annot_gds, varnm)
 ## Open ‘favor_chr22_sub.gds’
 ## [favor_chr22_sub.gds] # of selected variants: 3
