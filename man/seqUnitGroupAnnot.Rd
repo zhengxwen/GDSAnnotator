@@ -1,8 +1,8 @@
 \name{seqUnitGroupAnnot}
 \alias{seqUnitGroupAnnot}
-\title{Counts of unique values}
+\title{Grouping the variants}
 \description{
-    Calculate the counts of unique values.
+    Group the variants based on the variant annotations.
 }
 \usage{
 seqUnitGroupAnnot(gdsfile, varnm, by=1L, cond=NULL, bsize=100000L,
@@ -11,10 +11,13 @@ seqUnitGroupAnnot(gdsfile, varnm, by=1L, cond=NULL, bsize=100000L,
 \arguments{
     \item{gdsfile}{a \code{SeqVarGDSClass} object or a GDS file name}
     \item{varnm}{a character vector containing GDS node name(s)}
+    \item{by}{}
+    \item{cond}{}
     \item{FUN}{the function to be applied}
     \item{bsize}{block size}
     \item{verbose}{if \code{TRUE}, show information}
-    \item{...}{additional arguments passed to specific methods}
+    \item{...}{additional arguments passed to the user-defined function(s) in
+        \code{cond}}
 }
 \value{
     Returns a contingency table, an object of class \code{table}, an array of
@@ -23,18 +26,20 @@ integer values.
 
 \author{Xiuwen Zheng}
 \seealso{
-    \code{\link{seqOpen}}, \code{\link{seqValueCounts}}
+    \code{\link{seqAnnotList}}, \code{\link{seqAnnotate}}
 }
 
 \examples{
-# Ensembl-VEP annotation
-vcf_fn <- system.file("extdata", "example_wgs_sites_chr22_vep.vcf.gz",
+library(GDSAnnotator)
+
+# FAVOR essential dataset of chromosome 22 (subset)
+annot_gds <- system.file("extdata", "favor_chr22_sub.gds",
     package="GDSAnnotator")
 
-seqToGDS_VEP(vcf_fn, "tmp.gds")
+# list the annotations in the gds file
+(ann <- seqAnnotList(annot_gds))
 
-# delete the temporary file
-unlink("tmp.gds", force=TRUE)
+seqUnitGroupAnnot(annot_gds, "")
 }
 
 \keyword{gds}

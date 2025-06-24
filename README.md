@@ -38,6 +38,20 @@ annot_gds <- system.file("extdata", "favor_chr22_sub.gds", package="GDSAnnotator
 
 # list the annotations in the gds file (return a DataFrame)
 (ann <- seqAnnotList(annot_gds))
+## DataFrame with 30 rows and 4 columns
+##                       name     type       trait description
+##                <character> <factor> <character> <character>
+## 1         apc_conservation     Real     Float32          NA
+## 2      apc_conservation_v2     Real     Float32          NA
+## 3          apc_epigenetics     Real     Float32          NA
+## 4   apc_epigenetics_active     Real     Float32          NA
+## 5   apc_epigenetics_repr..     Real     Float32          NA
+## ...                    ...      ...         ...         ...
+## 26  genecode_comprehensi..  Logical       Int32          NA
+## 27              genehancer  Logical       Int32          NA
+## 28                linsight  Real        Float32          NA
+## 29              cadd_phred  Real        Float32          NA
+## 30                    rdhs  Logical       Int32          NA
 
 varnm <- ann$name  # use all annotation
 snp <- c("22-10510007-T-C", "22-10510038-T-C", "22-10510282-G-C",
