@@ -66,6 +66,9 @@ seqAnnotate(snp, annot_gds, varnm)
 | seqToGDS_VEP    | Convert Ensembl VEP VCF output to GDS |
 | seqToGDS_SnpEff | Convert SnpEff VCF output to GDS |
 | seqAnnotate     | Annotate variants using the annotation stored in GDS |
+| seqAnnotList    | List the annotations stored in the GDS file |
+| seqValueCounts  | Calculate the counts of unique values |
+| seqUnitGroupAnnot | Group the variants based on the variant annotations |
 
 
 ## See also
