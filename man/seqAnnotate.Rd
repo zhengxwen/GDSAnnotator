@@ -64,18 +64,24 @@ found.
 
 \author{Xiuwen Zheng}
 \seealso{
-    \code{\link{seqToGDS_VEP}}, \code{\link{seqToGDS_SnpEff}}
+    \code{\link{seqAnnotList}}, \code{\link{seqValueCounts}}
 }
 
 \examples{
-# FAVOR essential dataset of chromosome 22 in CSV format
-csv_fn <- system.file("extdata", "favor_chr22_sub.csv.gz",
+library(GDSAnnotator)
+
+# FAVOR essential dataset of chromosome 22 (subset)
+annot_gds <- system.file("extdata", "favor_chr22_sub.gds",
     package="GDSAnnotator")
 
-seqToGDS_FAVOR(csv_fn, "tmp.gds")
+# list the annotations in the gds file
+(ann <- seqAnnotList(annot_gds))
 
-# delete the temporary file
-unlink("tmp.gds", force=TRUE)
+varnm <- ann$name  # use all annotation
+snp <- c("22-10510007-T-C", "22-10510038-T-C", "22-10510282-G-C",
+    "22-10510303-G-C"  # a fake SNP, return NA
+    )
+seqAnnotate(snp, annot_gds, varnm)
 }
 
 \keyword{gds}

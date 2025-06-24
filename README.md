@@ -33,6 +33,27 @@ The `install_github()` approach requires that you build from source, i.e. `make`
 ```R
 library(GDSAnnotator)
 
+# FAVOR essential dataset of chromosome 22 (subset)
+annot_gds <- system.file("extdata", "favor_chr22_sub.gds", package="GDSAnnotator")
+
+# list the annotations in the gds file
+(ann <- seqAnnotList(annot_gds))
+
+varnm <- ann$name  # use all annotation
+snp <- c("22-10510007-T-C", "22-10510038-T-C", "22-10510282-G-C",
+    "22-10510303-G-C"  # a fake SNP, return NA
+    )
+seqAnnotate(snp, annot_gds, varnm)
+## Open ‘favor_chr22_sub.gds’
+## [favor_chr22_sub.gds] # of selected variants: 3
+## DataFrame with 4 rows and 30 columns
+##   apc_conservation apc_conservation_v2 apc_epigenetics apc_epigenetics_active apc_epigenetics_repressed
+##          <numeric>           <numeric>       <numeric>              <numeric>                 <numeric>
+## 1         2.583288            2.232373       0.0874126               0.226559                  0.310309
+## 2         4.766045            4.498693       0.0750365               0.226559                  0.310309
+## 3         0.393781            0.323713       0.1819110               0.226559                  0.310309
+## 4               NA                  NA              NA                     NA                        NA
+## ...
 ```
 
 

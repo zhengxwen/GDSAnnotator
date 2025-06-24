@@ -34,7 +34,7 @@ NAR 2022 Nov 9; gkac966. PMID: 36350676. DOI: 10.1093/nar/gkac966.
 }
 
 \examples{
-# FAVOR essential dataset of chromosome 22 in CSV format
+# FAVOR essential dataset of chromosome 22 (subset) in CSV format
 csv_fn <- system.file("extdata", "favor_chr22_sub.csv.gz",
     package="GDSAnnotator")
 
