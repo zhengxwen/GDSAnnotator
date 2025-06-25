@@ -28,7 +28,7 @@ The `install_github()` approach requires that you build from source, i.e. `make`
 
 
 
-## Examples
+## Examples (1)
 
 ```R
 library(GDSAnnotator)
@@ -70,6 +70,10 @@ seqAnnotate(snp, annot_gds, varnm)
 ## 4               NA                  NA              NA                     NA
 ## ......
 ```
+
+## Examples (2)
+
+https://gds-stat.s3.amazonaws.com/download/favor/Example1_FAVOR_GDS.html
 
 
 ## Key functions in GDSAnnotator
