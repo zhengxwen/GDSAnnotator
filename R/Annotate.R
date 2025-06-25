@@ -26,11 +26,16 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
         for (i in seq_along(gds_fn))
         {
             if (isTRUE(verbose))
-                .cat("Open ", sQuote(gds_fn[i]))
+                cat("Open", sQuote(basename(gds_fn[i])))
             # open the file
             f <- ans[[i]] <- seqOpen(gds_fn[i])
             # check chromosome
             v <- seqGetData(f, "$chromosome")
+            if (isTRUE(verbose))
+            {
+                .cat(" [", prettyNum(length(v), big.mark=",", scientific=FALSE),
+                    " variants]")
+            }
             if (nrun(v) > 1L)
                 stop(gds_fn[i], " should only contain one chromosome.")
             nm[i] <- as.character(v[1L])
@@ -145,9 +150,19 @@ ann_pos_allele <- function(annot_gds, annot_gds_idx, pos, allele, varnm,
             if (verbose)
                 cat("[", basename(f$filename), "] ", sep="")
             ii <- seqSetFilter(f, variant.sel=ii, ret.idx=TRUE, warn=FALSE,
-                verbose=verbose)$variant_idx
-            ans <- seqGetData(f, varnm, .tolist=NA)
+                verbose=FALSE)$variant_idx
+            n <- seqSummary(f, "genotype", verbose=FALSE)$seldim[3L]
+            .cat(" # of variants found: ", n)
+            l_verbose <- isTRUE(verbose) && (length(varnm)>1L)
+            if (l_verbose)
+                cat("[", length(varnm), "] ", sep="")
+            ans <- lapply(varnm, function(nm)
+            {
+                if (l_verbose) cat(".")
+                seqGetData(f, nm, .tolist=NA)
+            })
             ans <- DataFrame(ans)
+            if (l_verbose) cat("\n")
             # check
             rerow <- anyNA(ii) || is.unsorted(ii) || ii[1L] > ii[length(ii)]
             if (rerow)
