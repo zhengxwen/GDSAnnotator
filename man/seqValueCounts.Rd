@@ -35,16 +35,21 @@ integer values.
 gds_fn <- system.file("extdata", "gnomad.genomes.v4.chr22_sub.gds",
     package="GDSAnnotator")
 
+# open the file
+f <- seqOpen(gds_fn)
+
 # list the annotations in the gds file
-(a <- seqAnnotList(gds_fn))
+(a <- seqAnnotList(f))
 
-seqValueCounts(gds_fn, "variant_type")
+seqValueCounts(f, "variant_type")
 
-seqValueCounts(gds_fn, "was_mixed")
+seqValueCounts(f, "was_mixed")
 
-seqValueCounts(gds_fn, c("variant_type", "allele_type"))
+seqValueCounts(f, c("variant_type", "allele_type"))
 
-seqValueCounts(gds_fn, c("variant_type", "allele_type", "was_mixed"))
+seqValueCounts(f, c("variant_type", "allele_type", "was_mixed"))
+
+seqClose(f)
 }
 
 \keyword{gds}
