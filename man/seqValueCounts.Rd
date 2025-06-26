@@ -36,11 +36,15 @@ gds_fn <- system.file("extdata", "gnomad.genomes.v4.chr22_sub.gds",
     package="GDSAnnotator")
 
 # list the annotations in the gds file
-seqAnnotList(gds_fn)
+(a <- seqAnnotList(gds_fn))
 
 seqValueCounts(gds_fn, "variant_type")
 
-seqValueCounts(gds_fn, c("allele_type", "variant_type"))
+seqValueCounts(gds_fn, "was_mixed")
+
+seqValueCounts(gds_fn, c("variant_type", "allele_type"))
+
+seqValueCounts(gds_fn, c("variant_type", "allele_type", "was_mixed"))
 }
 
 \keyword{gds}

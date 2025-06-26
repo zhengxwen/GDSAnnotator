@@ -70,9 +70,12 @@ seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
 
     # user-defined function?
     var_name <- names(varnm)
+    if (is.null(var_name))
+        var_name <- basename(varnm)
+    else
+        names(varnm) <- NULL
     if (isTRUE(use_info))
         varnm <- paste0("annotation/info/", varnm)
-    if (!is.null(names(varnm))) names(varnm) <- NULL
     if (is.null(FUN))
     {
         FUN <- .table_var
