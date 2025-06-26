@@ -50,11 +50,12 @@ seqAnnotList <- function(gdsfile)
 }
 
 # Return the counts of unique values in a GDS node
-seqValueCounts <- function(gdsfile, varnm, FUN=NULL, bsize=100000L,
-    verbose=TRUE, ...)
+seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
+    bsize=100000L, verbose=TRUE, ...)
 {
     # check
     stopifnot(is.character(varnm), length(varnm)>0L)
+    stopifnot(is.logical(use_info), length(use_info)==1L)
     stopifnot(is.null(FUN) || is.function(FUN))
     stopifnot(is.numeric(bsize), length(bsize)==1L, bsize>0L)
     stopifnot(is.logical(verbose), length(verbose)==1L)
@@ -68,16 +69,27 @@ seqValueCounts <- function(gdsfile, varnm, FUN=NULL, bsize=100000L,
     }
 
     # user-defined function?
-    varnm_name <- names(varnm)
+    var_name <- names(varnm)
+    if (isTRUE(use_info))
+        varnm <- paste0("annotation/info/", varnm)
+    if (!is.null(names(varnm))) names(varnm) <- NULL
     if (is.null(FUN))
     {
         FUN <- .table_var
-        if (!is.null(names(varnm))) names(varnm) <- NULL
+        lst <- seqBlockApply(gdsfile, varnm, FUN,
+            as.is="list", bsize=bsize, .tolist=FALSE, .progress=verbose, ...)
+    } else if (is.function(FUN))
+    {
+        lst <- seqBlockApply(gdsfile, varnm,
+            FUN = function(x, ...)
+            {
+                v <- FUN(x, ...)
+                if (!inherits(v, "table")) v <- .table_var(v, ...)
+                v
+            }, as.is="list", bsize=bsize, .tolist=FALSE, .progress=verbose, ...)
     }
 
     # process
-    lst <- seqBlockApply(gdsfile, varnm, FUN,
-        as.is="list", bsize=bsize, .tolist=FALSE, .progress=verbose, ...)
     i <- vapply(lst, is.null, FALSE)
     if (any(i)) lst <- lst[!i]
     if (length(lst)==0L) return(NULL)
@@ -111,7 +123,7 @@ seqValueCounts <- function(gdsfile, varnm, FUN=NULL, bsize=100000L,
 
     # output
     dimnm <- nm_lst
-    names(dimnm) <- varnm_name
+    names(dimnm) <- var_name
     ans <- array(cnt, dim=dim(cnt), dimnames=dimnm)
     class(ans) <- "table"
     ans
