@@ -59,8 +59,9 @@ snp <- c("22-10510007-T-C", "22-10510038-T-C", "22-10510282-G-C",
     )  # a list of variants
 
 seqAnnotate(snp, annot_gds, varnm)
-## Open ‘favor_chr22_sub.gds’
-## [favor_chr22_sub.gds] # of selected variants: 3
+## Open ‘favor_chr22_sub.gds’ [1,000 variants]
+## [favor_chr22_sub.gds]  # of variants found: 3
+## [30] ..............................
 ## DataFrame with 4 rows and 30 columns
 ##   apc_conservation apc_conservation_v2 apc_epigenetics apc_epigenetics_active  ...
 ##          <numeric>           <numeric>       <numeric>              <numeric>
