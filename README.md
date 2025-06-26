@@ -88,7 +88,7 @@ https://gds-stat.s3.amazonaws.com/download/favor/Example1_FAVOR_GDS.html
 | seqAnnotate     | Annotate variants using the annotation stored in GDS |
 | seqAnnotList    | List the annotations stored in the GDS file |
 | seqValueCounts  | Calculate the counts of unique values |
-| seqUnitGroupAnnot | Group the variants based on the variant annotations |
+| seqUnitGroupAnnot | Group the variants based on the variant annotation |
 
 
 ## See also
