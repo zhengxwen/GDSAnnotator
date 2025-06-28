@@ -130,7 +130,8 @@ ann_pos_allele <- function(annot_gds, annot_gds_idx, pos, allele, varnm,
         idx <- order(idx)
     }
     # GDS node names
-    colnm <- varnm
+    colnm <- names(varnm)
+    if (is.null(colnm)) colnm <- varnm
     varnm <- .gds_varnm(varnm)
     # process
     if (length(annot_gds))
@@ -245,7 +246,7 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
     # check & open annotated gds
     .check_annot_gds(annot_gds)
     if_close_gds <- is.character(annot_gds)
-    annot_gds <- .open_annot_gds(annot_gds)
+    annot_gds <- .open_annot_gds(annot_gds, verbose)
     if (if_close_gds)
         on.exit(.close_annot_gds(annot_gds))
     # process
@@ -277,7 +278,7 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
     # check & open annotated gds
     .check_annot_gds(annot_gds)
     if_close_gds <- is.character(annot_gds)
-    annot_gds <- .open_annot_gds(annot_gds)
+    annot_gds <- .open_annot_gds(annot_gds, verbose)
     if (if_close_gds)
         on.exit(.close_annot_gds(annot_gds))
     # process
@@ -402,11 +403,50 @@ ann_variant <- function(object, annot_gds, varnm, split="-|_", ...,
     # check & open annotated gds
     .check_annot_gds(annot_gds)
     if_close_gds <- is.character(annot_gds)
-    annot_gds <- .open_annot_gds(annot_gds)
+    annot_gds <- .open_annot_gds(annot_gds, verbose)
     if (if_close_gds)
         on.exit(.close_annot_gds(annot_gds))
     # process
     ann_chr_pos_allele(chr, pos, ref, alt, annot_gds, varnm, verbose=verbose)
+}
+
+
+# Annotate a GRanges/GRangesList object
+ann_GRanges <- function(object, annot_gds, varnm, ..., verbose=TRUE)
+{
+    # check & open annotated gds
+    .check_annot_gds(annot_gds)
+    if_close_gds <- is.character(annot_gds)
+    annot_gds <- .open_annot_gds(annot_gds, verbose)
+    if (if_close_gds)
+        on.exit(.close_annot_gds(annot_gds))
+    # verbose
+    l_verbose <- isTRUE(verbose) && (length(varnm)>1L)
+    if (l_verbose)
+        cat("[", length(varnm), "] ", sep="")
+    # GDS node names
+    colnm <- names(varnm)
+    if (is.null(colnm)) colnm <- varnm
+    varnm <- .gds_varnm(varnm)
+    # process
+    ans <- lapply(annot_gds, function(gds)
+    {
+        seqSetFilter(gds, object, verbose=FALSE)
+        if (seqSummary(gds, "genotype", verbose=FALSE)$seldim[3L])
+        {
+            DataFrame(lapply(varnm, function(nm)
+            {
+                if (l_verbose) cat(".")
+                seqGetData(gds, nm, .tolist=NA)
+            }))
+        } else
+            NULL
+    })
+    if (l_verbose) cat("\n")
+    # output
+    ans <- do.call(rbind, ans)
+    if (!is.null(ans)) names(ans) <- colnm
+    ans
 }
 
 
@@ -415,6 +455,8 @@ setMethod("seqAnnotate", signature(object="data.frame"), ann_dataframe)
 setMethod("seqAnnotate", signature(object="DataFrame"), ann_dataframe)
 setMethod("seqAnnotate", signature(object="SeqVarGDSClass"), ann_gdsfile)
 setMethod("seqAnnotate", signature(object="character"), ann_variant)
+setMethod("seqAnnotate", signature(object="GRanges"), ann_GRanges)
+setMethod("seqAnnotate", signature(object="GRangesList"), ann_GRanges)
 
 
 # Annotate a GDS file with a file name input

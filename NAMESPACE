@@ -11,6 +11,7 @@ importFrom(utils, read.table, read.csv, flush.console, write.table, str, tail,
     type.convert)
 importFrom(readr, read_csv)
 importFrom(S4Vectors, nrun, DataFrame, Rle)
+importFrom(GenomicRanges, GRanges, GRangesList)
 
 
 # Export all names

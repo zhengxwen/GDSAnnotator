@@ -4,6 +4,8 @@
 \alias{seqAnnotate,DataFrame-method}
 \alias{seqAnnotate,SeqVarGDSClass-method}
 \alias{seqAnnotate,character-method}
+\alias{seqAnnotate,GRanges-method}
+\alias{seqAnnotate,GRangesList-method}
 \alias{seqAnnotateFile}
 \title{Annotate a list of variants}
 \description{
@@ -19,6 +21,8 @@
     add_to_gds=FALSE, no_sample=TRUE, root="", ..., verbose=TRUE)
 \S4method{seqAnnotate}{character}(object, annot_gds, varnm, split="-|_", ...,
     verbose=TRUE)
+\S4method{seqAnnotate}{GRanges}(object, annot_gds, varnm, ..., verbose=TRUE)
+\S4method{seqAnnotate}{GRangesList}(object, annot_gds, varnm, ..., verbose=TRUE)
 seqAnnotateFile(gds_fn, annot_gds, varnm, add_to_gds=FALSE, no_sample=TRUE,
     root="", ..., verbose=TRUE)
 }
@@ -80,6 +84,11 @@ snp <- c("22-10510007-T-C", "22-10510038-T-C", "22-10510282-G-C",
     "22-10510303-G-C"  # a fake SNP, return NA
     )
 seqAnnotate(snp, annot_gds, varnm)
+
+gr <- GenomicRanges::GRanges(seqnames = c("chr22", "chr22"),
+	ranges = IRanges::IRanges(start = c(10510100, 10510225),
+	    end = c(10510125, 10510250)))
+seqAnnotate(gr, annot_gds, varnm)
 }
 
 \keyword{gds}

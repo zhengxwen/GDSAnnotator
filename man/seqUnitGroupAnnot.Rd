@@ -39,7 +39,7 @@ annot_gds <- system.file("extdata", "favor_chr22_sub.gds",
 # list the annotations in the gds file
 (ann <- seqAnnotList(annot_gds))
 
-seqUnitGroupAnnot(annot_gds, "")
+# seqUnitGroupAnnot(annot_gds, "")
 }
 
 \keyword{gds}
