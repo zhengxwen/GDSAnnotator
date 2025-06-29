@@ -6,6 +6,7 @@
 \alias{seqAnnotate,character-method}
 \alias{seqAnnotate,GRanges-method}
 \alias{seqAnnotate,GRangesList-method}
+\alias{seqAnnotate,IRanges-method}
 \alias{seqAnnotateFile}
 \title{Annotate a list of variants}
 \description{

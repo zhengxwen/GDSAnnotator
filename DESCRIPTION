@@ -4,8 +4,7 @@ Title: Whole-genome variant annotation data manipulation using GDS files
 Version: 0.99.0
 Date: 2025-06-16
 Depends: R (>= 3.5.0), gdsfmt (>= 1.32.0), SeqArray (>= 1.48.0)
-Imports: methods, parallel, readr, IRanges, GenomicRanges, Biostrings,
-        S4Vectors
+Imports: methods, readr, IRanges, GenomicRanges, S4Vectors
 LinkingTo: gdsfmt
 Suggests: Biobase, BiocGenerics, BiocParallel, RUnit, Rcpp, SNPRelate, crayon,
         knitr, markdown, rmarkdown, Rsamtools, VariantAnnotation
