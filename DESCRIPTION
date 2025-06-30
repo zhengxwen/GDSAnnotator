@@ -6,8 +6,8 @@ Date: 2025-06-16
 Depends: R (>= 3.5.0), gdsfmt (>= 1.32.0), SeqArray (>= 1.48.0)
 Imports: methods, readr, IRanges, GenomicRanges, S4Vectors
 LinkingTo: gdsfmt
-Suggests: Biobase, BiocGenerics, BiocParallel, RUnit, Rcpp, SNPRelate, crayon,
-        knitr, markdown, rmarkdown, Rsamtools, VariantAnnotation
+Suggests: Biobase, BiocGenerics, RUnit, knitr, markdown, rmarkdown,
+        SummarizedExperiment, VariantAnnotation
 Authors@R: c(person("Xiuwen", "Zheng", role=c("aut", "cre"),
         email="xiuwen.zheng@abbvie.com",comment=c(ORCID="0000-0002-1390-0708")),
         person("Yuantao (Raven)", "Chen", role="ctb"),
