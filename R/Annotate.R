@@ -386,7 +386,7 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
 
 
 # Annotate "chr-pos-ref-alt"
-ann_variant <- function(object, annot_gds, varnm, split="-|_", ...,
+ann_variant <- function(object, annot_gds, varnm, split="[-_:]", ...,
     verbose=TRUE)
 {
     # check
