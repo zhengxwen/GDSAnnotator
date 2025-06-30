@@ -8,6 +8,7 @@
 \alias{seqAnnotate,GRangesList-method}
 \alias{seqAnnotate,IRanges-method}
 \alias{seqAnnotateFile}
+\alias{seqAnnotateVCF}
 \title{Annotate a list of variants}
 \description{
     Annotate a list of variants using the annotation stored in GDS files.
@@ -26,6 +27,7 @@
 \S4method{seqAnnotate}{GRangesList}(object, annot_gds, varnm, ..., verbose=TRUE)
 seqAnnotateFile(gds_fn, annot_gds, varnm, add_to_gds=FALSE, no_sample=TRUE,
     root="", ..., verbose=TRUE)
+seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
 }
 \arguments{
     \item{object}{a \code{data.frame}, \code{DataFrame}, a SeqArray GDS object
@@ -33,11 +35,13 @@ seqAnnotateFile(gds_fn, annot_gds, varnm, add_to_gds=FALSE, no_sample=TRUE,
         be a combination of chromosome, position, reference and alternative
         alleles, e.g., "22-23413241-A-G"}
     \item{gds_fn}{character for a GDS file name}
+    \item{vcf_fn}{character for a VCF or BCF file name}
     \item{annot_gds}{a character vector for GDS file names or a list of opened
         GDS files}
     \item{varnm}{a character vector for GDS node names without the prefix
         "annotation/info/"; ":id" for accessing "annotation/id", ":qual" for
-        "annotation/qual", ":filter" for "annotation/filter"; if
+        "annotation/qual", ":filter" for "annotation/filter"; if it is missing,
+        to use all annotations in the first file of \code{annot_gds}; if
         \code{varnm=character()} or \code{varnm=""}, see details}
     \item{col_chr}{the column name for chromosome}
     \item{col_pos}{the column name for position}
