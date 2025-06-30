@@ -111,6 +111,16 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
     nm
 }
 
+# get all annotation in the INFO field
+.annot_list <- function(gdsfile)
+{
+    # check
+    stopifnot(inherits(gdsfile, "SeqVarGDSClass"))
+    # process
+    nd_info <- index.gdsn(gdsfile, "annotation/info")
+    nm <- ls.gdsn(nd_info, recursive=TRUE, include.dirs=FALSE)
+}
+
 
 # Annotate with the same chromosome
 ann_pos_allele <- function(annot_gds, annot_gds_idx, pos, allele, varnm,
@@ -250,6 +260,8 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
     annot_gds <- .open_annot_gds(annot_gds, verbose)
     if (if_close_gds)
         on.exit(.close_annot_gds(annot_gds))
+    if (missing(varnm))
+        varnm <- .annot_list(annot_gds[[1L]])
     # process
     ann_chr_pos_allele(chr, pos, ref, alt, annot_gds, varnm, verbose=verbose)
 }
@@ -274,6 +286,8 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
     stopifnot(is.logical(no_sample), length(no_sample)==1L)
     stopifnot(is.character(root), length(root)==1L, !is.na(root))
     # check & process
+    if (missing(varnm))
+        varnm <- .annot_list(annot_gds[[1L]])
     stopifnot(is.character(varnm))
     if (identical(varnm, "")) varnm <- character()
     # check & open annotated gds
@@ -401,13 +415,15 @@ ann_variant <- function(object, annot_gds, varnm, split="[-_:]", ...,
         stop("Invalid position: ", object[which(is.na(pos))[1L]])
     ref <- vapply(ss, `[`, "", i=3L)
     alt <- vapply(ss, `[`, "", i=4L)
-    stopifnot(is.character(varnm))
     # check & open annotated gds
     .check_annot_gds(annot_gds)
     if_close_gds <- is.character(annot_gds)
     annot_gds <- .open_annot_gds(annot_gds, verbose)
     if (if_close_gds)
         on.exit(.close_annot_gds(annot_gds))
+    if (missing(varnm))
+        varnm <- .annot_list(annot_gds[[1L]])
+    stopifnot(is.character(varnm))
     # process
     ann_chr_pos_allele(chr, pos, ref, alt, annot_gds, varnm, verbose=verbose)
 }
@@ -416,14 +432,15 @@ ann_variant <- function(object, annot_gds, varnm, split="[-_:]", ...,
 # Annotate a GRanges/GRangesList object
 ann_GRanges <- function(object, annot_gds, varnm, ..., verbose=TRUE)
 {
-    # check
-    stopifnot(is.character(varnm))
     # check & open annotated gds
     .check_annot_gds(annot_gds)
     if_close_gds <- is.character(annot_gds)
     annot_gds <- .open_annot_gds(annot_gds, verbose)
     if (if_close_gds)
         on.exit(.close_annot_gds(annot_gds))
+    if (missing(varnm))
+        varnm <- .annot_list(annot_gds[[1L]])
+    stopifnot(is.character(varnm))
     # verbose
     l_verbose <- isTRUE(verbose) && (length(varnm)>1L)
     if (l_verbose)
@@ -465,6 +482,8 @@ ann_IRanges <- function(object, annot_gds, varnm, chr, ..., verbose=TRUE)
     annot_gds <- .open_annot_gds(annot_gds, verbose)
     if (if_close_gds)
         on.exit(.close_annot_gds(annot_gds))
+    if (missing(varnm))
+        varnm <- .annot_list(annot_gds[[1L]])
     # verbose
     l_verbose <- isTRUE(verbose) && (length(varnm)>1L)
     if (l_verbose)
@@ -517,5 +536,23 @@ seqAnnotateFile <- function(gds_fn, annot_gds, varnm, add_to_gds=FALSE,
     # process
     ann_gdsfile(gds, annot_gds, varnm, add_to_gds, no_sample, root,
         ..., verbose=verbose)
+}
+
+
+# Annotate a VCF file
+seqAnnotateVCF <- function(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
+{
+    # check
+    stopifnot(is.character(vcf_fn), length(vcf_fn)==1L)
+    if (!requireNamespace("VariantAnnotation", quietly=TRUE))
+        stop("The package 'VariantAnnotation' should be installed.")
+    if (!requireNamespace("SummarizedExperiment", quietly=TRUE))
+        stop("The package 'SummarizedExperiment' should be installed.")
+    # open the file
+    if (isTRUE(verbose)) .cat("Open ", sQuote(vcf_fn))
+    vcf <- VariantAnnotation::readVcf(vcf_fn)
+    gr <- SummarizedExperiment::rowRanges(vcf)
+    # output
+    seqAnnotate(gr, annot_gds, varnm, ..., verbose=verbose)
 }
 
