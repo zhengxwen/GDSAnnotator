@@ -5,8 +5,8 @@
     Calculate the counts of unique values.
 }
 \usage{
-seqValueCounts(gdsfile, varnm, use_info=TRUE, FUN=NULL, bsize=100000L,
-    verbose=TRUE, ...)
+seqValueCounts(gdsfile, varnm, use_info=TRUE, FUN=NULL, per_variant=FALSE,
+    bsize=100000L, verbose=TRUE, ...)
 }
 \arguments{
     \item{gdsfile}{a \code{SeqVarGDSClass} object or a GDS file name}
@@ -16,6 +16,9 @@ seqValueCounts(gdsfile, varnm, use_info=TRUE, FUN=NULL, bsize=100000L,
         should be specified in \code{varnm}}
     \item{FUN}{\code{NULL} to use the default \code{table}, or a user-defined
         function to be applied}
+    \item{per_variant}{\code{FALSE} by default; if \code{TRUE}, counting at
+        the variant level, i.e., multiple annotations for the same variant
+        are collapsed into a single count}
     \item{bsize}{block size}
     \item{verbose}{if \code{TRUE}, show information}
     \item{...}{additional arguments passed to \code{FUN} if it is a function}

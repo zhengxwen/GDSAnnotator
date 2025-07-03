@@ -49,14 +49,38 @@ seqAnnotList <- function(gdsfile)
     do.call(base::table, x)
 }
 
+# Call base::table for per-variant counting
+.table_var2 <- function(x, ...)
+{
+    if (!is.list(x) || inherits(x, "SeqVarDataList"))
+        x <- list(x)
+    # if SeqVarDataList
+    a <- vapply(x, function(z) inherits(z, "SeqVarDataList"), FALSE)
+    if (any(a))
+    {
+        ns <- x[[which(a)[1L]]]$length
+        b <- data.frame(.index=rep.int(seq_along(ns), times=ns))
+        b <- cbind(b, as.data.frame(lapply(x[a], function(z) z$data)))
+        a <- !duplicated(b)
+        for (i in seq_along(x))
+        {
+            z <- x[[i]]
+            if (inherits(z, "SeqVarDataList")) x[[i]] <- z$data[a]
+        }
+    }
+    x <- append(x, list(exclude=NULL))
+    do.call(base::table, x)
+}
+
 # Return the counts of unique values in a GDS node
 seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
-    bsize=100000L, verbose=TRUE, ...)
+    per_variant=FALSE, bsize=100000L, verbose=TRUE, ...)
 {
     # check
     stopifnot(is.character(varnm), length(varnm)>0L)
     stopifnot(is.logical(use_info), length(use_info)==1L)
     stopifnot(is.null(FUN) || is.function(FUN))
+    stopifnot(is.logical(per_variant), length(per_variant)==1L)
     stopifnot(is.numeric(bsize), length(bsize)==1L, bsize>0L)
     stopifnot(is.logical(verbose), length(verbose)==1L)
     # check gdsfile
@@ -78,11 +102,16 @@ seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
         varnm <- paste0("annotation/info/", varnm)
     if (is.null(FUN))
     {
-        FUN <- .table_var
+        if (isTRUE(per_variant))
+            FUN <- .table_var2
+        else
+            FUN <- .table_var
+        # blocking process
         lst <- seqBlockApply(gdsfile, varnm, FUN,
             as.is="list", bsize=bsize, .tolist=FALSE, .progress=verbose, ...)
     } else if (is.function(FUN))
     {
+        # blocking process
         lst <- seqBlockApply(gdsfile, varnm,
             FUN = function(x, ...)
             {
