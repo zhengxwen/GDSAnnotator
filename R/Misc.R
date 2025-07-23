@@ -72,6 +72,38 @@ seqAnnotList <- function(gdsfile)
     do.call(base::table, x)
 }
 
+# Merge tables
+.merge_table <- function(lst, var_name)
+{
+    # merge objects of class 'table'
+    nm_lst <- lapply(seq_along(dimnames(lst[[1L]])), function(i)
+    {
+        sort(unique(unlist(lapply(lst, function(x) dimnames(x)[[i]]))),
+            na.last=TRUE)
+    })
+    i_na <- vapply(nm_lst, function(nm) which(is.na(nm))[1L], 0L)
+    cnt <- array(0L, dim=lengths(nm_lst))
+    for (i in seq_along(lst))
+    {
+        ss <- dimnames(lst[[i]])
+        ii <- lapply(seq_along(ss), function(j) {
+            k <- match(ss[[j]], nm_lst[[j]])
+            if (anyNA(k)) k[is.na(k)] <- i_na[j]  # check NA
+            k
+        })
+        v <- do.call(`[`, c(list(cnt), ii)) + unname(lst[[i]])
+        cnt <- do.call(`[<-`, c(list(cnt), ii, list(v)))
+    }
+
+    # output
+    dimnm <- nm_lst
+    names(dimnm) <- var_name
+    ans <- array(cnt, dim=dim(cnt), dimnames=dimnm)
+    class(ans) <- "table"
+    ans
+}
+
+
 # Return the counts of unique values in a GDS node
 seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
     per_variant=FALSE, bsize=100000L, verbose=TRUE, ...)
@@ -86,13 +118,30 @@ seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
     # check gdsfile
     if (is.character(gdsfile))
     {
+        if (length(gdsfile) == 0L)
+            stop("'gdsfile' should be a file name.")
+        if (length(gdsfile) > 1L)
+        {
+            lst <- lapply(gdsfile, function(fn)
+            {
+                seqValueCounts(fn, varnm, use_info=use_info, FUN=FUN,
+                    per_variant=per_variant, bsize=bsize,
+                    verbose=verbose, ...)
+            })
+            var_name <- names(varnm)
+            if (is.null(var_name)) var_name <- basename(varnm)
+            # output
+            return(.merge_table(lst, var_name))
+        }
+        # when length(gdsfile)==1
+        if (isTRUE(verbose))
+            .cat("Open ", sQuote(basename(gdsfile)))
         gdsfile <- seqOpen(gdsfile, allow.duplicate=TRUE)
         on.exit(seqClose(gdsfile))
     } else {
         stopifnot(inherits(gdsfile, "SeqVarGDSClass"))
     }
 
-    # user-defined function?
     var_name <- names(varnm)
     if (is.null(var_name))
         var_name <- basename(varnm)
@@ -100,6 +149,8 @@ seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
         names(varnm) <- NULL
     if (isTRUE(use_info))
         varnm <- paste0("annotation/info/", varnm)
+
+    # user-defined function?
     if (is.null(FUN))
     {
         if (isTRUE(per_variant))
@@ -134,31 +185,7 @@ seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
         stop("All internal lst[[...]] should have the same dimension.")
 
     # merge objects of class 'table'
-    nm_lst <- lapply(seq_along(dimnames(lst[[1L]])), function(i)
-    {
-        sort(unique(unlist(lapply(lst, function(x) dimnames(x)[[i]]))),
-            na.last=TRUE)
-    })
-    i_na <- vapply(nm_lst, function(nm) which(is.na(nm))[1L], 0L)
-    cnt <- array(0L, dim=lengths(nm_lst))
-    for (i in seq_along(lst))
-    {
-        ss <- dimnames(lst[[i]])
-        ii <- lapply(seq_along(ss), function(j) {
-            k <- match(ss[[j]], nm_lst[[j]])
-            if (anyNA(k)) k[is.na(k)] <- i_na[j]  # check NA
-            k
-        })
-        v <- do.call(`[`, c(list(cnt), ii)) + unname(lst[[i]])
-        cnt <- do.call(`[<-`, c(list(cnt), ii, list(v)))
-    }
-
-    # output
-    dimnm <- nm_lst
-    names(dimnm) <- var_name
-    ans <- array(cnt, dim=dim(cnt), dimnames=dimnm)
-    class(ans) <- "table"
-    ans
+    .merge_table(lst, var_name)
 }
 
 

@@ -9,7 +9,8 @@ seqValueCounts(gdsfile, varnm, use_info=TRUE, FUN=NULL, per_variant=FALSE,
     bsize=100000L, verbose=TRUE, ...)
 }
 \arguments{
-    \item{gdsfile}{a \code{SeqVarGDSClass} object or a GDS file name}
+    \item{gdsfile}{a \code{SeqVarGDSClass} object, a GDS file name or a
+        character vector for multiple file names}
     \item{varnm}{a character vector containing GDS node name(s)}
     \item{use_info}{\code{TRUE} or \code{FALSE}; if \code{TRUE}, to use the
         node(s) in the folder "annotation/info"; otherwise, full node name(s)
