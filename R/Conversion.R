@@ -81,23 +81,25 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     # create the gds file
     if (verbose)
     {
-        .cat("gnomAD VCF => GDS (", date(), "):")
+        .cat("##< ", tm())
+        .cat("gnomAD VCF => GDS")
         .cat("    output: ", out_fn)
         .cat("    compression: ", compress)
     }
 
     # import from VCF
+    attr(verbose, "header_no_time") <- TRUE
     seqVCF2GDS(vcf_fn, out_fn, storage.option=compress1, verbose=verbose)
 
     # recompress?
     if (compress1 != compress2)
     {
         if (verbose)
-            .cat("Recompressing (", date(), ") ...")
+            .cat("Recompressing (", tm(), ") ...")
         seqRecompress(out_fn, compress=compress, verbose=verbose)
     }
 
-    if (verbose) .cat("Done (", date(), ")")
+    if (verbose) .cat("##> ", tm())
     # output
     invisible(normalizePath(out_fn))
 }
@@ -111,6 +113,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 .vep_vcf <- function(vcf_fn, out_fn, compress, root="CSQ", verbose=TRUE)
 {
     # vcf => gds
+    attr(verbose, "header_no_time") <- TRUE
     seqVCF2GDS(vcf_fn, out_fn, storage.option=compress, optimize=FALSE,
         verbose=verbose)
     # split CSQ (Consequence annotations from Ensembl VEP)    
@@ -178,7 +181,8 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     # create the gds file
     if (verbose)
     {
-        .cat("Ensembl-VEP VCF => GDS (", date(), "):")
+        .cat("##< ", tm())
+        .cat("Ensembl-VEP VCF => GDS")
         .cat("    output: ", out_fn)
         .cat("    compression: ", compress)
     }
@@ -203,11 +207,11 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     if (compress1 != compress2)
     {
         if (verbose)
-            .cat("Recompressing (", date(), ") ...")
+            .cat("Recompressing (", tm(), ") ...")
         seqRecompress(out_fn, compress=compress, verbose=verbose)
     }
 
-    if (verbose) .cat("Done (", date(), ")")
+    if (verbose) .cat("##> ", tm())
     # output
     invisible(normalizePath(out_fn))
 }
@@ -218,10 +222,11 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 # Convert SnpEff to a SeqArray GDS file
 #
 
-.snpeff_vcf <- function(vcf_fn, out_fn, compress, root_lst=c("ANN", "LOF", "NMD"),
-    verbose=TRUE)
+.snpeff_vcf <- function(vcf_fn, out_fn, compress,
+    root_lst=c("ANN", "LOF", "NMD"), verbose=TRUE)
 {
     # vcf => gds
+    attr(verbose, "header_no_time") <- TRUE
     seqVCF2GDS(vcf_fn, out_fn, storage.option=compress, optimize=FALSE,
         verbose=verbose)
     # split CSQ (Consequence annotations from Ensembl VEP)    
@@ -280,7 +285,8 @@ seqToGDS_SnpEff <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     # create the gds file
     if (verbose)
     {
-        .cat("SnpEff VCF => GDS (", date(), "):")
+        .cat("##< ", tm())
+        .cat("SnpEff VCF => GDS")
         .cat("    output: ", out_fn)
         .cat("    compression: ", compress)
     }
@@ -292,11 +298,11 @@ seqToGDS_SnpEff <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     if (compress1 != compress2)
     {
         if (verbose)
-            .cat("Recompressing (", date(), ") ...")
+            .cat("Recompressing (", tm(), ") ...")
         seqRecompress(out_fn, compress=compress, verbose=verbose)
     }
 
-    if (verbose) .cat("Done (", date(), ")")
+    if (verbose) .cat("##> ", tm())
     # output
     invisible(normalizePath(out_fn))
 }
