@@ -153,6 +153,8 @@ seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
     # user-defined function?
     if (is.null(FUN))
     {
+        if (length(list(...)) > 0L)
+            stop("User-defined parameters should be none when 'FUN=NULL'.")
         if (isTRUE(per_variant))
             FUN <- .table_var2
         else
