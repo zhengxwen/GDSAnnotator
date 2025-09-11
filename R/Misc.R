@@ -120,10 +120,17 @@ seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
     {
         if (length(gdsfile) == 0L)
             stop("'gdsfile' should be a file name.")
+        if (anyNA(gdsfile))
+            stop("'gdsfile' should not contain NA.")
+        if (anyDuplicated(gdsfile))
+            stop("'gdsfile' should not contain duplicated file names.")
         if (length(gdsfile) > 1L)
         {
-            lst <- lapply(gdsfile, function(fn)
+            lst <- lapply(seq_along(gdsfile), function(i)
             {
+                fn <- gdsfile[i]
+                if (isTRUE(verbose))
+                    cat("[", i, "/", length(gdsfile), "]  ", sep="")
                 seqValueCounts(fn, varnm, use_info=use_info, FUN=FUN,
                     per_variant=per_variant, bsize=bsize,
                     verbose=verbose, ...)
