@@ -6,7 +6,7 @@
 }
 \usage{
 seqValueCounts(gdsfile, varnm, use_info=TRUE, FUN=NULL, per_variant=FALSE,
-    bsize=100000L, verbose=TRUE, ...)
+    parallel=FALSE, bsize=100000L, verbose=TRUE, ...)
 }
 \arguments{
     \item{gdsfile}{a \code{SeqVarGDSClass} object, a GDS file name or a
@@ -20,6 +20,10 @@ seqValueCounts(gdsfile, varnm, use_info=TRUE, FUN=NULL, per_variant=FALSE,
     \item{per_variant}{\code{FALSE} by default; if \code{TRUE}, counting at
         the variant level, i.e., multiple annotations for the same variant
         are collapsed into a single count}
+    \item{parallel}{\code{FALSE} (serial processing), \code{TRUE} (multicore
+        processing), numeric value or other value; \code{parallel} is passed
+        to the argument \code{cl} in \code{\link{seqParallel}}, see
+        \code{\link{seqParallel}} for more details}
     \item{bsize}{block size}
     \item{verbose}{if \code{TRUE}, show information}
     \item{...}{additional arguments passed to \code{FUN} if it is a function}
