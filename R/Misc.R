@@ -106,7 +106,7 @@ seqAnnotList <- function(gdsfile)
 
 # Return the counts of unique values in a GDS node
 seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
-    per_variant=FALSE, bsize=100000L, verbose=TRUE, ...)
+    per_variant=FALSE, parallel=FALSE, bsize=100000L, verbose=TRUE, ...)
 {
     # check
     stopifnot(is.character(varnm), length(varnm)>0L)
@@ -132,7 +132,7 @@ seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
                 if (isTRUE(verbose))
                     cat("[", i, "/", length(gdsfile), "]  ", sep="")
                 seqValueCounts(fn, varnm, use_info=use_info, FUN=FUN,
-                    per_variant=per_variant, bsize=bsize,
+                    per_variant=per_variant, parallel=parallel, bsize=bsize,
                     verbose=verbose, ...)
             })
             var_name <- names(varnm)
@@ -167,8 +167,9 @@ seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
         else
             FUN <- .table_var
         # blocking process
-        lst <- seqBlockApply(gdsfile, varnm, FUN,
-            as.is="list", bsize=bsize, .tolist=FALSE, .progress=verbose, ...)
+        lst <- seqBlockApply(gdsfile, varnm, FUN, as.is="list",
+            parallel=parallel, bsize=bsize,
+            .tolist=FALSE, .progress=verbose, ...)
     } else if (is.function(FUN))
     {
         # blocking process
@@ -178,7 +179,8 @@ seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
                 v <- FUN(x, ...)
                 if (!inherits(v, "table")) v <- .table_var(v, ...)
                 v
-            }, as.is="list", bsize=bsize, .tolist=FALSE, .progress=verbose, ...)
+            }, as.is="list", parallel=parallel, bsize=bsize,
+            .tolist=FALSE, .progress=verbose, ...)
     }
 
     # process
