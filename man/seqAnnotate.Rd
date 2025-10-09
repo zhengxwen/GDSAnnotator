@@ -42,7 +42,8 @@ seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
         "annotation/info/"; ":id" for accessing "annotation/id", ":qual" for
         "annotation/qual", ":filter" for "annotation/filter"; if it is missing,
         to use all annotations in the first file of \code{annot_gds}; if
-        \code{varnm=character()} or \code{varnm=""}, see details}
+        \code{varnm=character()} or \code{NULL}, return which variants are
+        selected; see details}
     \item{col_chr}{the column name for chromosome}
     \item{col_pos}{the column name for position}
     \item{col_ref}{the column name for the reference alleles}
@@ -66,7 +67,7 @@ seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
     Returns a DataFrame or NULL.
 }
 \details{
-    If \code{varnm=character()} or \code{varnm=""}, \code{seqAnnotate} returns
+    If \code{varnm=character()} or \code{NULL}, \code{seqAnnotate} returns
 a DataFrame object with two columns 'file_idx' and 'variant_idx' to indicate
 where the variants are found, and NA in 'variant_idx' if the variant is not
 found.

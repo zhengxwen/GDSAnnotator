@@ -225,7 +225,6 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
     stopifnot(is.logical(verbose), length(verbose)==1L)
     # check & process
     stopifnot(is.character(varnm))
-    if (identical(varnm, "")) varnm <- character()
     # process pos & each chromosome
     if (!is.integer(pos)) pos <- as.integer(pos)
     chr_lst <- unique(chr)
@@ -262,6 +261,7 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
         on.exit(.close_annot_gds(annot_gds))
     if (missing(varnm))
         varnm <- .annot_list(annot_gds[[1L]])
+    if (is.null(varnm)) varnm <- character()
     # process
     ann_chr_pos_allele(chr, pos, ref, alt, annot_gds, varnm, verbose=verbose)
 }
@@ -288,8 +288,8 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
     # check & process
     if (missing(varnm))
         varnm <- .annot_list(annot_gds[[1L]])
+    if (is.null(varnm)) varnm <- character()
     stopifnot(is.character(varnm))
-    if (identical(varnm, "")) varnm <- character()
     # check & open annotated gds
     .check_annot_gds(annot_gds)
     if_close_gds <- is.character(annot_gds)
@@ -423,6 +423,7 @@ ann_variant <- function(object, annot_gds, varnm, split="[-_:]", ...,
         on.exit(.close_annot_gds(annot_gds))
     if (missing(varnm))
         varnm <- .annot_list(annot_gds[[1L]])
+    if (is.null(varnm)) varnm <- character()
     stopifnot(is.character(varnm))
     # process
     ann_chr_pos_allele(chr, pos, ref, alt, annot_gds, varnm, verbose=verbose)
@@ -440,6 +441,7 @@ ann_GRanges <- function(object, annot_gds, varnm, ..., verbose=TRUE)
         on.exit(.close_annot_gds(annot_gds))
     if (missing(varnm))
         varnm <- .annot_list(annot_gds[[1L]])
+    if (is.null(varnm)) varnm <- character()
     stopifnot(is.character(varnm))
     # verbose
     l_verbose <- isTRUE(verbose) && (length(varnm)>1L)
@@ -484,6 +486,7 @@ ann_IRanges <- function(object, annot_gds, varnm, chr, ..., verbose=TRUE)
         on.exit(.close_annot_gds(annot_gds))
     if (missing(varnm))
         varnm <- .annot_list(annot_gds[[1L]])
+    if (is.null(varnm)) varnm <- character()
     # verbose
     l_verbose <- isTRUE(verbose) && (length(varnm)>1L)
     if (l_verbose)
