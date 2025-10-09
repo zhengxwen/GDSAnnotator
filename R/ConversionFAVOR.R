@@ -248,8 +248,8 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
     for (i_fn in seq_along(fn_in_tar))
     {
         fn <- fn_in_tar[i_fn]
-        .cat("Loading file (", i_fn, "):")
-        .cat("        ", fn)
+        if (verbose)
+            .cat("Loading file (", i_fn, "):\n    ", fn)
         InF <- tar_open(tar_fn, fn)
         # check the header
         hr <- readLines(InF, n=1L)
@@ -314,7 +314,8 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
                         x <- !is.na(v) & v!=""
                     else
                         x <- is.finite(v)
-                    append.gdsn(nd_lst[[nm]], v[x])
+                    if (any(x))
+                        append.gdsn(nd_lst[[nm]], v[x])
                 } else {
                     x <- rep(0L, nrow(df))
                 }
@@ -323,10 +324,10 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
             # show progress
             nline <- nline + nrow(df)
             ii <- ii + 1L
-            if (ii>=25L && verbose)
+            if (ii>=50L && verbose)
             {
-                cat("\r    ", prettyNum(nline, big.mark=",", scientific=FALSE),
-                    "    ", tm(), sep="")
+                .cat("    ", prettyNum(nline, big.mark=",", scientific=FALSE),
+                    "    ", tm())
                 ii <- 0L
             }
         }
@@ -334,7 +335,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
         close(InF)
         if (verbose)
         {
-            .cat("\r    ", prettyNum(nline, big.mark=",", scientific=FALSE),
+            .cat("    ", prettyNum(nline, big.mark=",", scientific=FALSE),
                 "    ", tm())
         }
     }
