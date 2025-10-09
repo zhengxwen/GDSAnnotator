@@ -151,7 +151,7 @@ tar_open <- function(tar_fn, sub_fn, tar_cmd="tar")
 
 seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
     compress=c("LZMA", "ZIP", "none"), root="", use_float32=TRUE,
-    tar_cmd=Sys.getenv("TAR"), verbose=TRUE)
+    block_size=100000L, tar_cmd=Sys.getenv("TAR"), verbose=TRUE)
 {
     # check
     stopifnot(is.character(tar_fn), length(tar_fn)==1L)
@@ -161,6 +161,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
     compress <- match.arg(compress)
     stopifnot(is.character(root), length(root)==1L)
     stopifnot(is.logical(use_float32), length(use_float32)==1L)
+    stopifnot(is.numeric(block_size), length(block_size)==1L, block_size>=1000)
     stopifnot(is.character(tar_cmd), length(tar_cmd)==1L)
     stopifnot(is.logical(verbose), length(verbose)==1L, !is.na(verbose))
 
@@ -173,6 +174,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
     }
 
     # list the file in tar
+    if (tar_cmd == "") tar_cmd <- "tar"
     if (is.null(fn_in_tar))
     {
         fn_in_tar <- untar(tar_fn, list=TRUE, tar=tar_cmd)
@@ -242,18 +244,19 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
 
     nm_head <- c("variant_vcf", "chromosome", "position", "ref_vcf", "alt_vcf")
     nline <- 0L
-    nblock <- 100000L
 
     # for-loop for each file
     for (i_fn in seq_along(fn_in_tar))
     {
         fn <- fn_in_tar[i_fn]
         if (verbose)
-            .cat("Loading file (", i_fn, "):\n    ", fn)
-        InF <- tar_open(tar_fn, fn)
+            cat("Loading file (", i_fn, "):\n    ", fn, sep="")
+        InF <- tar_open(tar_fn, fn, tar_cmd)
         # check the header
         hr <- readLines(InF, n=1L)
         hr <- unlist(strsplit(hr, ",", fixed=TRUE))
+        if (verbose)
+            .cat("  (", length(hr), " columns)")
         if (anyDuplicated(hr))
             stop("Duplicated column names!")
         if (!all(nm_head %in% hr))
@@ -289,9 +292,10 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
         hr_type <- favor_head$type[match(hr, favor_head$column)]
         ii <- 0L
         # read
-        while(length(txt <- readLines(InF, n=nblock)))
+        while(length(txt <- readLines(InF, n=block_size)))
         {
-            df <- read.csv(text=txt, header=FALSE, nrows=nblock, colClasses=hr_type)
+            df <- read.csv(text=txt, header=FALSE, nrows=block_size,
+                colClasses=hr_type)
             names(df) <- hr
             # basic
             append.gdsn(nd_varid, nline + seq_len(nrow(df)))
@@ -314,7 +318,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
                         x <- !is.na(v) & v!=""
                     else
                         x <- is.finite(v)
-                    if (any(x))
+                    # if (any(x))
                         append.gdsn(nd_lst[[nm]], v[x])
                 } else {
                     x <- rep(0L, nrow(df))
@@ -324,10 +328,10 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
             # show progress
             nline <- nline + nrow(df)
             ii <- ii + 1L
-            if (ii>=50L && verbose)
+            if (ii>=100L && verbose)
             {
                 .cat("    ", prettyNum(nline, big.mark=",", scientific=FALSE),
-                    "    ", tm())
+                    "\t", tm())
                 ii <- 0L
             }
         }
@@ -336,7 +340,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
         if (verbose)
         {
             .cat("    ", prettyNum(nline, big.mark=",", scientific=FALSE),
-                "    ", tm())
+                "\t", tm())
         }
     }
 
@@ -358,6 +362,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
             delete.gdsn(index.gdsn(outfile, paste0("annotation/info/@", nm)))
         }
     }
+    if (verbose) cat("Loading Done.\n")
 
     # recompress?
     on.exit()

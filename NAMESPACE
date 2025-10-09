@@ -8,7 +8,7 @@ import(methods)
 import(gdsfmt)
 import(SeqArray)
 importFrom(utils, read.table, read.csv, flush.console, write.table, str, tail,
-    type.convert)
+    type.convert, untar)
 importFrom(readr, read_csv)
 importFrom(S4Vectors, nrun, DataFrame, Rle)
 importFrom(IRanges, IRanges)
