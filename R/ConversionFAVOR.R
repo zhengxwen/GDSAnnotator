@@ -171,6 +171,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
         .cat("##< ", tm())
         .cat("FAVOR csv tar => GDS")
         .cat("    input: ", tar_fn)
+        .cat("    using the program ", shQuote(tar_cmd))
     }
 
     # list the file in tar
@@ -236,6 +237,9 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
     nd_qual <- add.gdsn(nd_annot, "qual", storage="float", compress="ZIP_ra")
     # add filter
     nd_flt <- add.gdsn(nd_annot, "filter", storage="int32", compress="ZIP_ra")
+    put.attr.gdsn(nd_flt, "R.class", "factor")
+    put.attr.gdsn(nd_flt, "R.levels", "PASS")
+    put.attr.gdsn(nd_flt, "Description", "All filters passed")
     # VCF INFO
     nd_info <- addfolder.gdsn(nd_annot, "info")
     if (root != "")
@@ -280,6 +284,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
                 if (tp == "numeric")
                     tp <- ifelse(use_float32, "float32", "float64")
                 nd <- add.gdsn(nd_info, nm, storage=tp, compress="ZIP_ra")
+                put.attr.gdsn(nd, "Number", ".")
                 s <- favor_head$description[i]
                 if (is.na(s)) s <- ""
                 put.attr.gdsn(nd, "Description", s)
