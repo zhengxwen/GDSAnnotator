@@ -206,7 +206,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
 
     # load FAVOR CSV header
     favor_head <- read.csv(system.file("extdata", "favor_csv_header.csv",
-        package="GDSAnnotator", mustWork=TRUE))
+        package="GDSAnnotator", mustWork=TRUE), header=TRUE)
 
     # create the output
     outfile <- createfn.gds(out_fn)

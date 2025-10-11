@@ -1,4 +1,4 @@
-﻿column,type,essential,description
+column,type,essential,description
 vid,numeric,FALSE,Variant index
 variant_vcf,character,TRUE,"The unique identifier of the given variant, reported as chr-pos-ref-alt format"
 variant_annovar,character,FALSE,"The unique identifier of the given variant, reported as chr-pos-ref-alt format"
