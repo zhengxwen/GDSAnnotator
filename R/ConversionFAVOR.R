@@ -212,7 +212,8 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
     outfile <- createfn.gds(out_fn)
     put.attr.gdsn(outfile$root, "FileFormat", "SEQ_ARRAY")
     put.attr.gdsn(outfile$root, "FileVersion", "v1.0")
-    addfolder.gdsn(outfile, "description")
+    nd <- addfolder.gdsn(outfile, "description")
+    add.gdsn(nd, "reference", "GRCh38", visible=FALSE)
     # add sample.id
     add.gdsn(outfile, "sample.id", integer())
     # add variant.id
@@ -281,10 +282,13 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
             {
                 i <- which(nm == favor_head$column)
                 tp <- favor_head$type[i]
+                tp_vcf <- c(character="String", integer="Integer",
+                    numeric="Float")[tp]
                 if (tp == "numeric")
                     tp <- ifelse(use_float32, "float32", "float64")
                 nd <- add.gdsn(nd_info, nm, storage=tp, compress="ZIP_ra")
                 put.attr.gdsn(nd, "Number", ".")
+                put.attr.gdsn(nd, "Type", tp_vcf)
                 s <- favor_head$description[i]
                 if (is.na(s)) s <- ""
                 put.attr.gdsn(nd, "Description", s)
