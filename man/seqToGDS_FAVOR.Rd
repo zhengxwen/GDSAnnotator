@@ -10,7 +10,7 @@ seqToGDS_FAVOR(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     root="FAVOR", use_float32=TRUE, verbose=TRUE)
 seqToGDS_FAVOR_tar(tar_fn, out_fn, fn_in_tar=NULL,
     compress=c("LZMA", "ZIP", "none"), root="", use_float32=TRUE,
-    block_size=100000L, tar_cmd=Sys.getenv("TAR"), verbose=TRUE)
+    block_size=10000L, tar_cmd=Sys.getenv("TAR"), verbose=TRUE)
 }
 \arguments{
     \item{csv_fn}{the path(es) of FAVOR csv file}
