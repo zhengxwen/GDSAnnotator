@@ -199,7 +199,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
 	    stop("No csv files in the input tar file.")
     if (verbose)
     {
-        .cat("        ", paste(basename(fn_in_tar), collapse=", "))
+        .cat("    files: ", paste(basename(fn_in_tar), collapse=", "))
         .cat("    output: ", out_fn)
         .cat("    compression: ", compress)
     }
