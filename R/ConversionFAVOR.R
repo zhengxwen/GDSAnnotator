@@ -151,7 +151,7 @@ tar_open <- function(tar_fn, sub_fn, tar_cmd="tar")
 
 seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
     compress=c("LZMA", "ZIP", "none"), root="", use_float32=TRUE,
-    block_size=10000L, tar_cmd=Sys.getenv("TAR"), verbose=TRUE)
+    block_size=100000L, tar_cmd=Sys.getenv("TAR"), verbose=TRUE)
 {
     # check
     stopifnot(is.character(tar_fn), length(tar_fn)==1L)
@@ -301,11 +301,9 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
         hr_type <- favor_head$type[match(hr, favor_head$column)]
         ii <- 0L
         # read
-        while(length(txt <- readLines(InF, n=block_size)))
+        while(NROW(df <- read.csv(InF, header=FALSE, nrows=block_size,
+            colClasses=hr_type)))
         {
-            df <- read.csv(text=txt, header=FALSE, nrows=block_size,
-                colClasses=hr_type)
-            remove(txt)
             names(df) <- hr
             # basic
             append.gdsn(nd_varid, nline + seq_len(nrow(df)))
@@ -338,13 +336,16 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
             # show progress
             nline <- nline + nrow(df)
             ii <- ii + 1L
-            if (ii>=1000L && verbose)
+            if (ii>=100L && verbose)
             {
                 .cat("    ", prettyNum(nline, big.mark=",", scientific=FALSE),
                     "\t", tm())
                 ii <- 0L
             }
             remove(df)
+            # check EOF
+            s <- readLines(InF, 1L)
+            if (length(s)) pushBack(s, InF) else break
         }
         # close the pipe
         close(InF)
