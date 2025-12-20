@@ -335,14 +335,19 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
             }
             # show progress
             nline <- nline + nrow(df)
-            ii <- ii + 1L
-            if (ii>=100L && verbose)
-            {
-                .cat("    ", prettyNum(nline, big.mark=",", scientific=FALSE),
-                    "\t", tm())
-                ii <- 0L
-            }
             remove(df)
+            ii <- ii + 1L
+            if (ii >= 100L)
+            {
+                if (verbose)
+                {
+                    .cat("    ",
+                        prettyNum(nline, big.mark=",", scientific=FALSE),
+                        "\t", tm())
+                }
+                ii <- 0L
+                gc(verbose=FALSE, reset=TRUE, full=TRUE)
+            }
             # check EOF
             s <- readLines(InF, 1L)
             if (length(s)) pushBack(s, InF) else break
@@ -354,7 +359,6 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
             .cat("    ", prettyNum(nline, big.mark=",", scientific=FALSE),
                 "\t", tm())
         }
-        gc(verbose=FALSE, reset=TRUE, full=TRUE)
     }
 
     # get the number of variants
