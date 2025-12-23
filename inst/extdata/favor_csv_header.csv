@@ -172,7 +172,7 @@ k50_umap,numeric,FALSE,Mappability of unconverted genome using 50bp reads. Measu
 k100_bismap,numeric,FALSE,"Mappability of the bisulfite-converted genome using 100bp reads. Identifies unique mapping regions for bisulfite sequencing, which introduces complexity due to C-to-T conversion"
 k100_umap,numeric,FALSE,Mappability of unconverted genome using 100bp reads. Measures the extent to which a position can be uniquely mapped by sequence reads
 nucdiv,numeric,FALSE,Average number of nucleotide differences per site between randomly chosen DNA sequences from a population
-rdhs,character,TRUE,Read count of regulatory DNase I hypersensitive sites (DHSs) 
+rdhs,character,TRUE,Read count of regulatory DNase I hypersensitive sites (DHSs)
 recombination_rate,numeric,FALSE,"Local recombination rate per base pair, indicating how frequently genetic recombination occurs in this genomic region during meiosis"
 refseq_category,character,FALSE,Identify whether variants cause protein coding changes using RefSeq genes definition systems (functional consequence)
 refseq_info,character,FALSE,"Identify whether variants cause protein coding changes using RefSeq genes definition systems, it will label the gene name of the variants has impact, if it is intergenic region, the nearby gene name will be labeled in the annotation"
