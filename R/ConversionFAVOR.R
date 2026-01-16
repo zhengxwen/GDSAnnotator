@@ -361,6 +361,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
         }
     }
 
+    gc(verbose=FALSE, reset=TRUE, full=TRUE)
     # get the number of variants
     sync.gds(outfile)
     nvar <- objdesp.gdsn(index.gdsn(outfile, "variant.id"))$dim
