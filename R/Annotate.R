@@ -126,22 +126,14 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
 
 
 # Annotate with the same chromosome
-ann_pos_allele <- function(annot_gds, annot_gds_idx, pos, allele, varnm,
-    verbose=TRUE)
+ann_pos_allele <- function(annot_gds, annot_gds_idx, chr, pos, ref, alt,
+    varnm, verbose=TRUE)
 {
     # check
     stopifnot(length(annot_gds)==length(annot_gds_idx))
     stopifnot(is.integer(pos))
-    stopifnot(is.character(allele))
-    stopifnot(length(pos)==length(allele))
-    # position
-    idx <- NULL
-    if (is.unsorted(pos) || pos[1L] > pos[length(pos)])
-    {
-        idx <- order(pos)
-        pos <- pos[idx]; allele <- allele[idx]
-        idx <- order(idx)
-    }
+    stopifnot(is.character(ref))
+    stopifnot(length(pos)==length(ref))
     # GDS node names
     colnm <- names(varnm)
     if (is.null(colnm)) colnm <- varnm
@@ -151,20 +143,14 @@ ann_pos_allele <- function(annot_gds, annot_gds_idx, pos, allele, varnm,
     {
         # use the first gds
         f <- annot_gds[[1L]]
-        ptr <- SeqArray:::.buffer_position(f)  # pointer to positions
-        allele_nd <- index.gdsn(f, "allele")
-        # call C to find variant indices
-        ii <- .Call(SEQ_Find_Position, ptr, allele_nd, pos, allele)
-        # clear position buffer
-        SeqArray:::.buffer_position(f, clear=TRUE)
+        # find matching variants using seqSetFilterPos
+        ii <- seqSetFilterPos(f, chr, pos, ref=ref, alt=alt,
+            ret.idx=TRUE, verbose=FALSE)
         # get
         if (length(varnm))
         {
-            # set a filter to get data
             if (verbose)
                 cat("[", basename(f$filename), "] ", sep="")
-            ii <- seqSetFilter(f, variant.sel=ii, ret.idx=TRUE, warn=FALSE,
-                verbose=FALSE)$variant_idx
             n <- seqSummary(f, "genotype", verbose=FALSE)$seldim[3L]
             .cat(" # of variants found: ", n)
             l_verbose <- isTRUE(verbose) && (length(varnm)>1L)
@@ -177,22 +163,18 @@ ann_pos_allele <- function(annot_gds, annot_gds_idx, pos, allele, varnm,
             })
             ans <- DataFrame(ans)
             if (l_verbose) cat("\n")
-            # check
-            rerow <- anyNA(ii) || is.unsorted(ii) || ii[1L] > ii[length(ii)]
-            if (rerow)
-            {
-                if (!is.null(idx))
-                    ans <- ans[ii[idx], ]
-                else
-                    ans <- ans[ii, ]
-            } else {
-                if (!is.null(idx)) ans <- ans[idx, ]
-            }
+            # ii maps each input to the filtered set row (NA = not found)
+            ans <- ans[ii, ]
             names(ans) <- colnm
         } else {
-            ans <- DataFrame(file_idx=Rle(annot_gds_idx[1L], length(ii)),
-                variant_idx=ii)
-            if (!is.null(idx)) ans <- ans[idx, ]
+            # return GDS variant indices
+            gds_idx <- seqGetData(f, "$variant_index")
+            variant_idx <- rep(NA_integer_, length(pos))
+            valid <- !is.na(ii)
+            if (any(valid))
+                variant_idx[valid] <- gds_idx[ii[valid]]
+            ans <- DataFrame(file_idx=Rle(annot_gds_idx[1L], length(pos)),
+                variant_idx=variant_idx)
         }
     } else {
         # no annotation
@@ -212,19 +194,8 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
     # check
     stopifnot(length(chr)==1L || length(chr)==length(pos))
     stopifnot(length(pos) == length(ref))
-    if (!missing(alt) && !is.null(alt))
-    {
+    if (!is.null(alt))
         stopifnot(length(pos) == length(alt))
-        s <- ref
-        ref <- paste0(ref, ",", alt)  # TODO: optimize
-        if (anyNA(alt))
-        {
-            x <- is.na(alt)
-            ref[x] <- s[x]
-            remove(x)
-        }
-        remove(s)
-    }
     stopifnot(is.logical(verbose), length(verbose)==1L)
     # check & process
     stopifnot(is.character(varnm))
@@ -235,7 +206,7 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
     {
         ii <- which(names(annot_gds) == ch)
         a <- annot_gds[ii]
-        ann_pos_allele(a, ii, pos, ref, varnm, verbose)
+        ann_pos_allele(a, ii, ch, pos, ref, alt, varnm, verbose)
     })
     # output
     ans[[1L]]
@@ -305,10 +276,13 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         stop(basename(object$filename), " should only contain one chromosome.")
     pos <- seqGetData(object, "position")
     allele <- seqGetData(object, "allele")
+    ref <- sub(",.*", "", allele)
+    alt <- ifelse(grepl(",", allele, fixed=TRUE),
+        sub("^[^,]*,", "", allele), NA_character_)
     if (isFALSE(add_to_gds) || length(varnm)==0L)
     {
         # return DataFrame
-        ann_chr_pos_allele(chr, pos, allele, NULL, annot_gds, varnm,
+        ann_chr_pos_allele(chr, pos, ref, alt, annot_gds, varnm,
             verbose=verbose)
     } else {
         # when add_to_gds=TRUE or it is a file name
@@ -317,12 +291,12 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         if (is.unsorted(pos) || pos[1L] > pos[length(pos)])
         {
             idx <- order(pos)
-            pos <- pos[idx]; allele <- allele[idx]
+            pos <- pos[idx]; ref <- ref[idx]; alt <- alt[idx]
             idx <- order(idx)
         }
-        map <- ann_chr_pos_allele(chr, pos, allele, NULL, annot_gds, varnm="",
+        map <- ann_chr_pos_allele(chr, pos, ref, alt, annot_gds, varnm="",
             verbose=verbose)
-        remove(chr, pos, allele)
+        remove(chr, pos, ref, alt)
         # check
         if (anyNA(map$file_idx) || length(unique(map$file_idx))>1L)
         {
