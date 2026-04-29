@@ -1,6 +1,7 @@
 #######################################################################
 #
 # Package Name: GDSAnnotator
+# Copyright (C) 2025-2026    Xiuwen Zheng
 #
 # Description:
 #     Variant annotation data manipulation using GDS files
