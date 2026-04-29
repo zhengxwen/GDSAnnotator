@@ -9,7 +9,7 @@
 #
 
 # Package-wide variables
-.packageEnv <- new.env()
+.packageEnv <- new.env(parent=emptyenv())
 
 # Internal functions
 .cat <- function(...) cat(..., "\n", sep="")
