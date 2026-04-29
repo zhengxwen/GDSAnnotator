@@ -10,7 +10,7 @@
 
 # Define new generic functions
 setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
-    standardGeneric("seqAnnotate"))
+        standardGeneric("seqAnnotate"))
 
 
 # Open the GDS file(s) with variant annotation
@@ -19,6 +19,8 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
     ans <- gds_fn
     if (is.character(gds_fn))
     {
+        # check
+        stopifnot(length(gds_fn) > 0L)
         # open the GDS file(s)
         ans <- vector("list", length(gds_fn))
         on.exit({ for (f in ans) if (!is.null(f)) seqClose(f) })
@@ -94,8 +96,9 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
 # GDS nodes for the INFO field
 .gds_varnm_cvt <- c(
     ':chromosome'="chromosome", ':position'="position", ':allele'="allele",
-	':id'="annotation/id", ':qual'="annotation/qual",
-	':filter'="annotation/filter")
+    ':id'="annotation/id", ':qual'="annotation/qual",
+    ':filter'="annotation/filter")
+
 .gds_varnm <- function(nm)
 {
     if (length(nm))

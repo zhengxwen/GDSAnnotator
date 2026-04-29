@@ -141,7 +141,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         if (verbose)
             cat("    ", nm, " ...\n    ", sep="")
         v <- lapply(csq, function(s)
-            vapply(strsplit(s, "|", fixed=TRUE), `[`, "", i=i))
+                vapply(strsplit(s, "|", fixed=TRUE), `[`, "", i=i))
         j <- match(nm, .packageEnv$vep$Name)
         desp <- ""
         if (!is.na(j))
