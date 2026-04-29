@@ -76,7 +76,8 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         }
         append.gdsn(index.gdsn(outfile, "position"), df$position)
         append.gdsn(index.gdsn(outfile, "chromosome"), df$chromosome)
-        append.gdsn(index.gdsn(outfile, "allele"), paste0(df$ref_vcf, ",", df$alt_vcf))
+        append.gdsn(index.gdsn(outfile, "allele"),
+            paste0(df$ref_vcf, ",", df$alt_vcf))
         append.gdsn(index.gdsn(outfile, "annotation/id"), df$variant_vcf)
         append.gdsn(index.gdsn(outfile, "annotation/qual"), rep(NaN, nrow(df)))
         append.gdsn(index.gdsn(outfile, "annotation/filter"), rep(1L, nrow(df)))
@@ -101,7 +102,7 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 
     # close the nodes
     for (nm in c("variant.id", "position", "chromosome", "allele",
-        "annotation/id", "annotation/qual", "annotation/filter"))
+            "annotation/id", "annotation/qual", "annotation/filter"))
     {
         nd <- index.gdsn(outfile, nm)
         readmode.gdsn(nd)
@@ -144,8 +145,8 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 # open a file in the tar.gz file
 tar_open <- function(tar_fn, sub_fn, tar_cmd="tar")
 {
-	cmd <- paste(tar_cmd, "-xOzf", tar_fn, sub_fn)
-	pipe(cmd, "rt")
+    cmd <- paste(tar_cmd, "-xOzf", shQuote(tar_fn), shQuote(sub_fn))
+    pipe(cmd, "rt")
 }
 
 
@@ -192,11 +193,11 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
             }, 0L)
             fn_in_tar <- fn_in_tar[order(n)]
         }
-	} else {
-	    fn_in_tar <- unique(fn_in_tar)
-	}
-	if (length(fn_in_tar) == 0L)
-	    stop("No csv files in the input tar file.")
+    } else {
+        fn_in_tar <- unique(fn_in_tar)
+    }
+    if (length(fn_in_tar) == 0L)
+        stop("No csv files in the input tar file.")
     if (verbose)
     {
         .cat("    files: ", paste(basename(fn_in_tar), collapse=", "))
@@ -206,10 +207,11 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
 
     # load FAVOR CSV header
     favor_head <- read.csv(system.file("extdata", "favor_csv_header.csv",
-        package="GDSAnnotator", mustWork=TRUE), header=TRUE)
+            package="GDSAnnotator", mustWork=TRUE), header=TRUE)
 
     # create the output
     outfile <- createfn.gds(out_fn)
+    on.exit(closefn.gds(outfile))
     put.attr.gdsn(outfile$root, "FileFormat", "SEQ_ARRAY")
     put.attr.gdsn(outfile$root, "FileVersion", "v1.0")
     nd <- addfolder.gdsn(outfile, "description")
@@ -217,13 +219,17 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
     # add sample.id
     add.gdsn(outfile, "sample.id", integer())
     # add variant.id
-    nd_varid <- add.gdsn(outfile, "variant.id", storage="int32", compress="ZIP_ra")
+    nd_varid <- add.gdsn(outfile, "variant.id", storage="int32",
+        compress="ZIP_ra")
     # add position
-    nd_pos <- add.gdsn(outfile, "position", storage="int32", compress="ZIP_ra")
+    nd_pos <- add.gdsn(outfile, "position", storage="int32",
+        compress="ZIP_ra")
     # add chromosome
-    nd_chr <- add.gdsn(outfile, "chromosome", storage="string", compress="ZIP_ra")
+    nd_chr <- add.gdsn(outfile, "chromosome", storage="string",
+        compress="ZIP_ra")
     # add allele
-    nd_allele <- add.gdsn(outfile, "allele", storage="string", compress="ZIP_ra")
+    nd_allele <- add.gdsn(outfile, "allele", storage="string",
+        compress="ZIP_ra")
     # add a folder for genotypes
     nd_geno <- addfolder.gdsn(outfile, "genotype")
     put.attr.gdsn(nd_geno, "VariableName", "GT")
@@ -326,7 +332,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
                         x <- !is.na(v) & v!=""
                     else
                         x <- is.finite(v)
-                    # if (any(x))
+                    if (any(x))
                         append.gdsn(nd_lst[[nm]], v[x])
                 } else {
                     x <- rep(0L, nrow(df))
@@ -364,9 +370,10 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
     gc(verbose=FALSE, reset=TRUE, full=TRUE)
     # get the number of variants
     sync.gds(outfile)
-    nvar <- objdesp.gdsn(index.gdsn(outfile, "variant.id"))$dim
     # RLE-coded chromosome (for faster loading)
-    SeqArray:::.optim_chrom(outfile)
+    seqOptimize(outfile, "chromosome", verbose=FALSE)
+    # the number of variants
+    nvar <- objdesp.gdsn(index.gdsn(outfile, "variant.id"))$dim
 
     # whether has missing values or not
     nm_lst <- ls.gdsn(index.gdsn(outfile, "annotation/info"))

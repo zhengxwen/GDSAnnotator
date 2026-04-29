@@ -2,8 +2,8 @@ Package: GDSAnnotator
 Type: Package
 Title: Whole-genome variant annotation data manipulation using GDS files
 Version: 0.99.0
-Date: 2025-06-16
-Depends: R (>= 3.5.0), gdsfmt (>= 1.32.0), SeqArray (>= 1.48.0)
+Date: 2026-04-17
+Depends: R (>= 4.0.0), gdsfmt (>= 1.32.0), SeqArray (>= 1.51.9)
 Imports: methods, readr, IRanges, GenomicRanges, S4Vectors
 LinkingTo: gdsfmt
 Suggests: Biobase, BiocGenerics, RUnit, knitr, markdown, rmarkdown,

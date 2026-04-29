@@ -219,7 +219,7 @@ seqUnitGroupAnnot <- function(gdsfile, varnm, by=1L, cond=NULL,
         if (length(cond) != length(varnm))
             stop(cond_err)
         a <- vapply(cond, function(x)
-            is.null(x) || is.vector(x) || is.function(x), FALSE)
+                is.null(x) || is.vector(x) || is.function(x), FALSE)
         if (!all(a))
         {
             a <- which(!a)[1L]
@@ -304,8 +304,7 @@ seqUnitGroupAnnot <- function(gdsfile, varnm, by=1L, cond=NULL,
     {
         v <- strsplit(names(ans), '\xFF', fixed=TRUE)
         nc <- max(lengths(v))
-        df <- lapply(seq_len(nc), function(i)
-            vapply(v, `[`, "", i=i))
+        df <- lapply(seq_len(nc), function(i) vapply(v, `[`, "", i=i))
     } else {
         df <- list(names(ans))
     }
