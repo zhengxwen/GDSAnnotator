@@ -119,6 +119,7 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
 ann_pos_allele <- function(gds, chr, pos, ref, alt, varnm, verbose=TRUE)
 {
     # check
+    stopifnot(inherits(gds, "SeqVarGDSClass"))
     stopifnot(is.integer(pos))
     stopifnot(is.character(ref))
     stopifnot(is.character(alt))
@@ -184,7 +185,7 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
     if (length(chr) == 1L) chr <- rep(chr, length(pos))
     # match chromosome names in the annotation GDS files
     s <- strsplit(gsub("^chr", "", names(annot_gds)), "&", fixed=TRUE)
-    gds_idx <- rep(seq_along(annot_gds), each=lengths(s))
+    gds_idx <- rep(seq_along(annot_gds), times=lengths(s))
     names(gds_idx) <- unlist(s)    
     # process each chromosome subset
     ans <- vector("list", length(chr_lst))
@@ -194,22 +195,23 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
         # find the GDS file(s) for this chromosome
         gds_ii <- which(names(gds_idx) == ch)
         # indices for this chromosome
-        j <- which(chr == ch)
+        idx <- which(chr == ch)
         # process each GDS file for this chromosome
-        v <- lapply(gds_ii, function(k)
+        v <- lapply(seq_along(gds_ii), function(j)
         {
-            if (!length(j)) return(NULL)
+            k <- gds_ii[j]
+            if (!length(idx)) return(NULL)
             # annotate variants in this chromosome subset
-            d <- ann_pos_allele(annot_gds[[k]], ch, pos[j], ref[j], alt[j],
-                varnm, verbose)
+            d <- ann_pos_allele(annot_gds[[k]],
+                ch, pos[idx], ref[idx], alt[idx], varnm, verbose)
             if (!length(varnm)) d$file_idx <- Rle(k, nrow(d))
             # temporary index for combining results in original input order
-            d$..idx <- j
-            if (k < length(gds_ii) && any(d$..no))
+            d$..idx <- idx
+            if (j < length(gds_ii) && any(d$..no))
             {
                 # some variants are not found in this file,
                 # so they will be processed in the next file(s)
-                j <<- j[d$..no]
+                idx <<- idx[d$..no]
                 d <- d[!d$..no, ]
             }
             d$..no <- NULL  # remove the temporary column
