@@ -11,4 +11,4 @@ importFrom(GenomicRanges, GRanges, GRangesList)
 
 
 # Export all names
-exportPattern("^seq*")
+exportPattern("^seq")
