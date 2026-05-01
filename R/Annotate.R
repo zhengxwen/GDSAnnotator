@@ -292,10 +292,8 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
     if (nrun(chr) > 1L)
         stop(basename(object$filename), " should only contain one chromosome.")
     pos <- seqGetData(object, "position")
-    allele <- seqGetData(object, "allele")
-    ref <- sub(",.*", "", allele)
-    alt <- ifelse(grepl(",", allele, fixed=TRUE),
-        sub("^[^,]*,", "", allele), NA_character_)
+    ref <- seqGetData(object, "$ref")
+    alt <- seqGetData(object, "$alt")
     if (isFALSE(add_to_gds) || length(varnm)==0L)
     {
         # return DataFrame
