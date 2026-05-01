@@ -7,7 +7,7 @@
 \alias{seqAnnotate,GRanges-method}
 \alias{seqAnnotate,GRangesList-method}
 \alias{seqAnnotate,IRanges-method}
-\alias{seqAnnotateFile}
+\alias{seqAnnotateGDS}
 \alias{seqAnnotateVCF}
 \title{Annotate a list of variants}
 \description{
@@ -25,7 +25,7 @@
     verbose=TRUE)
 \S4method{seqAnnotate}{GRanges}(object, annot_gds, varnm, ..., verbose=TRUE)
 \S4method{seqAnnotate}{GRangesList}(object, annot_gds, varnm, ..., verbose=TRUE)
-seqAnnotateFile(gds_fn, annot_gds, varnm, add_to_gds=FALSE, no_sample=TRUE,
+seqAnnotateGDS(gds_fn, annot_gds, varnm, add_to_gds=FALSE, no_sample=TRUE,
     root="", ..., verbose=TRUE)
 seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
 }
