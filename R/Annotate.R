@@ -217,10 +217,10 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
             d
         })
         # combine results for this chromosome
-        ans[[i]] <- do.call(rbind, v)
+        ans[[i]] <- if (length(v) == 1L) v[[1L]] else do.call(rbind, v)
     }
     # combine results in original input order
-    ans <- do.call(rbind, ans)
+    ans <- if (length(ans) == 1L) ans[[1L]] else do.call(rbind, ans)
     # return
     ans <- ans[order(ans$..idx), ]
     ans$..idx <- NULL  # remove the temporary index column
