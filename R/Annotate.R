@@ -153,10 +153,14 @@ ann_pos_allele <- function(gds, chr, pos, ref, alt, varnm, verbose=TRUE)
         ans <- DataFrame(ans)
         if (l_verbose) cat("\n")
         # ii maps each input to the filtered set row (NA = not found)
-        ans[ii, ]
+        ans <- ans[ii, ]
+        ans$..no <- is.na(ii)
+        ans
     } else {
         # return the file index and variant index
-        DataFrame(variant_idx = seqGetData(gds, "$variant_index")[ii])
+        DataFrame(
+            variant_idx = seqGetData(gds, "$variant_index")[ii],
+            ..no = is.na(ii))
     }
 }
 
@@ -183,35 +187,44 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
     gds_idx <- rep(seq_along(annot_gds), each=lengths(s))
     names(gds_idx) <- unlist(s)    
     # process each chromosome subset
-    ans_lst <- vector("list", length(chr_lst))
+    ans <- vector("list", length(chr_lst))
     for (i in seq_along(chr_lst))
     {
         ch <- chr_lst[i]
         # find the GDS file(s) for this chromosome
         gds_ii <- which(names(gds_idx) == ch)
+        # indices for this chromosome
         j <- which(chr == ch)
-        for (k in gds_ii)
+        # process each GDS file for this chromosome
+        v <- lapply(gds_ii, function(k)
         {
-            d <- ann_pos_allele(annot_gds[[k]], ch,
-                pos[j], ref[j], alt[j], varnm, verbose)
-            if (length(varnm))
-                d$..idx <- j
-            else
-                d$file_idx <- Rle(k, nrow(d))
-            ans_lst[[i]] <- d
-        }
+            if (!length(j)) return(NULL)
+            # annotate variants in this chromosome subset
+            d <- ann_pos_allele(annot_gds[[k]], ch, pos[j], ref[j], alt[j],
+                varnm, verbose)
+            if (!length(varnm)) d$file_idx <- Rle(k, nrow(d))
+            # temporary index for combining results in original input order
+            d$..idx <- j
+            if (k < length(gds_ii) && any(d$..no))
+            {
+                # some variants are not found in this file,
+                # so they will be processed in the next file(s)
+                j <<- j[d$..no]
+                d <- d[!d$..no, ]
+            }
+            d$..no <- NULL  # remove the temporary column
+            # return
+            d
+        })
+        # combine results for this chromosome
+        ans[[i]] <- do.call(rbind, v)
     }
     # combine results in original input order
-    if (length(chr_lst) == 1L)
-    {
-        ans_lst[[1L]]
-    } else {
-        ans <- do.call(rbind, ans_lst)
-        remove(ans_lst)
-        ans <- ans[order(ans$..idx), ]
-        ans$..idx <- NULL  # remove the temporary index column
-        ans
-    }
+    ans <- do.call(rbind, ans)
+    # return
+    ans <- ans[order(ans$..idx), ]
+    ans$..idx <- NULL  # remove the temporary index column
+    ans
 }
 
 
