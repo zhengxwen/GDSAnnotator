@@ -45,9 +45,7 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
             nm[i] <- paste0("chr",
                 paste(as.character(unique(v)), collapse="&"))
         }
-        # re-order
         names(ans) <- nm
-        ans <- ans[order(suppressWarnings(as.numeric(nm)), nm)]
         # output
         on.exit()
     }
@@ -118,8 +116,7 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
 
 
 # Helper function for ann_chr_pos_allele
-ann_pos_allele <- function(gds, i_gds, chr, pos, ref, alt, varnm,
-    verbose=TRUE)
+ann_pos_allele <- function(gds, chr, pos, ref, alt, varnm, verbose=TRUE)
 {
     # check
     stopifnot(is.integer(pos))
@@ -141,7 +138,7 @@ ann_pos_allele <- function(gds, i_gds, chr, pos, ref, alt, varnm,
         if (verbose)
         {
             cat("[", basename(gds$filename), "] ", sep="")
-            n <- seqSummary(f, "genotype", verbose=FALSE)$seldim[3L]
+            n <- seqSummary(gds, "genotype", verbose=FALSE)$seldim[3L]
             .cat(" # of variants found: ", n)
         }
         l_verbose <- isTRUE(verbose) && (length(varnm)>1L)
@@ -150,18 +147,16 @@ ann_pos_allele <- function(gds, i_gds, chr, pos, ref, alt, varnm,
         ans <- lapply(varnm, function(nm)
         {
             if (l_verbose) cat(".")
-            seqGetData(f, nm, .tolist=NA)
+            seqGetData(gds, nm, .tolist=NA)
         })
+        names(ans) <- colnm
         ans <- DataFrame(ans)
         if (l_verbose) cat("\n")
         # ii maps each input to the filtered set row (NA = not found)
-        ans <- ans[ii, ]
-        names(ans) <- colnm
+        ans[ii, ]
     } else {
         # return the file index and variant index
-        ans <- DataFrame(
-            file_idx    = Rle(i_gds, length(pos)),
-            variant_idx = seqGetData(f, "$variant_index")[ii])
+        DataFrame(variant_idx = seqGetData(gds, "$variant_index")[ii])
     }
 }
 
@@ -197,9 +192,12 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
         j <- which(chr == ch)
         for (k in gds_ii)
         {
-            d <- ann_pos_allele(annot_gds[[k]], k, ch,
+            d <- ann_pos_allele(annot_gds[[k]], ch,
                 pos[j], ref[j], alt[j], varnm, verbose)
-            d$..idx <- j
+            if (length(varnm))
+                d$..idx <- j
+            else
+                d$file_idx <- Rle(k, nrow(d))
             ans_lst[[i]] <- d
         }
     }
@@ -209,11 +207,11 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
         ans_lst[[1L]]
     } else {
         ans <- do.call(rbind, ans_lst)
+        remove(ans_lst)
         ans <- ans[order(ans$..idx), ]
-        ans$..idx <- NULL
+        ans$..idx <- NULL  # remove the temporary index column
+        ans
     }
-    # return
-    ans
 }
 
 
