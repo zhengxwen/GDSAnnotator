@@ -58,6 +58,7 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         nd_root <- addfolder.gdsn(nd_root, root)
 
     # load csv
+    nm_others <- character()
     for (i in seq_along(csv_fn))
     {
         .cat("Reading ", csv_fn[i], " ...")
@@ -68,6 +69,8 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
             stop("The csv header should contain all of ",
                 paste(nm_lst, collapse=", "), ".")
         }
+        if (i == 1L)
+            nm_others <- setdiff(colnames(df), nm_lst)
         # basic
         if ("vid" %in% colnames(df))
         {
@@ -83,7 +86,7 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         append.gdsn(index.gdsn(outfile, "annotation/qual"), rep(NaN, nrow(df)))
         append.gdsn(index.gdsn(outfile, "annotation/filter"), rep(1L, nrow(df)))
         # annotation
-        for (nm in setdiff(colnames(df), nm_lst))
+        for (nm in nm_others)
         {
             if (verbose) .cat("    [adding ", nm, "]\t")
             v <- df[[nm]]
@@ -109,7 +112,7 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         readmode.gdsn(nd)
         SeqArray:::.DigestCode(nd, verbose=FALSE)
     }
-    for (nm in setdiff(colnames(df), nm_lst))
+    for (nm in nm_others)
     {
         nd <- index.gdsn(nd_root, nm)
         readmode.gdsn(nd)
