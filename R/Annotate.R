@@ -260,7 +260,7 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
 
 # Annotate a GDS file
 ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
-    no_sample=TRUE, root="", ..., verbose=TRUE)
+    no_sample=TRUE, root="", cleanup=FALSE, ..., verbose=TRUE)
 {
     # check
     stopifnot(inherits(object, "SeqVarGDSClass"))
@@ -270,27 +270,25 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
     {
         if (isTRUE(object$readonly))
             stop("GDS file should not be readonly when 'add_to_gds=TRUE'.")
-        z <- seqSummary(object, "genotype", verbose=TRUE)
+        z <- seqSummary(object, "genotype", verbose=FALSE)
         if (z$dim[3L] != z$seldim[3L])
             stop("All variants in GDS should be used when 'add_to_gds=TRUE'.")
     }
     stopifnot(is.logical(no_sample), length(no_sample)==1L)
     stopifnot(is.character(root), length(root)==1L, !is.na(root))
-    # check & process
-    if (missing(varnm))
-        varnm <- .annot_list(annot_gds[[1L]])
-    if (is.null(varnm)) varnm <- character()
-    stopifnot(is.character(varnm))
     # check & open annotated gds
     .check_annot_gds(annot_gds)
     if_close_gds <- is.character(annot_gds)
     annot_gds <- .open_annot_gds(annot_gds, verbose)
     if (if_close_gds)
         on.exit(.close_annot_gds(annot_gds))
+    # check annotation variable names
+    if (missing(varnm))
+        varnm <- .annot_list(annot_gds[[1L]])
+    if (is.null(varnm)) varnm <- character()
+    stopifnot(is.character(varnm))
     # process
     chr <- seqGetData(object, "$chromosome")
-    if (nrun(chr) > 1L)
-        stop(basename(object$filename), " should only contain one chromosome.")
     pos <- seqGetData(object, "position")
     ref <- seqGetData(object, "$ref")
     alt <- seqGetData(object, "$alt")
@@ -301,22 +299,9 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
             verbose=verbose)
     } else {
         # when add_to_gds=TRUE or it is a file name
-        # sort position
-        idx <- NULL
-        if (is.unsorted(pos) || pos[1L] > pos[length(pos)])
-        {
-            idx <- order(pos)
-            pos <- pos[idx]; ref <- ref[idx]; alt <- alt[idx]
-            idx <- order(idx)
-        }
-        map <- ann_chr_pos_allele(chr, pos, ref, alt, annot_gds, varnm="",
-            verbose=verbose)
+        map <- ann_chr_pos_allele(chr, pos, ref, alt, annot_gds,
+            varnm=character(), verbose=verbose)
         remove(chr, pos, ref, alt)
-        # check
-        if (anyNA(map$file_idx) || length(unique(map$file_idx))>1L)
-        {
-            stop("The GDS file should have only one chromosome.")
-        }
         if (verbose)
         {
             n <- sum(is.na(map$variant_idx))
@@ -339,7 +324,9 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
                 verbose=verbose)
             outgds <- seqOpen(add_to_gds, readonly=FALSE)
             on.exit({
-                if (!is.null(outgds)) seqClose(outgds)
+                seqClose(outgds)
+                if (isTRUE(cleanup))
+                    cleanup.gds(add_to_gds, verbose=verbose)
             }, add=TRUE)
         }
         if (verbose)
@@ -353,37 +340,37 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         # GDS nodes
         colnm <- gsub("^\\:", ".", varnm)
         varnm <- .gds_varnm(varnm)
-        f <- annot_gds[[as.integer(map$file_idx[1])]]
-        if (verbose)
-            cat("    [", basename(f$filename), "] ", sep="")
-        ii <- seqSetFilter(f, variant.sel=map$variant_idx, ret.idx=TRUE,
-            warn=FALSE, verbose=verbose)$variant_idx
-        rerow <- anyNA(ii) || is.unsorted(ii) || ii[1L] > ii[length(ii)]
-        if (rerow && !is.null(idx)) ii <- ii[idx]
-        if (!rerow && !is.null(idx)) { rerow <- TRUE; ii <- idx }
-        # add each node
+        n_total <- nrow(map)
+        # group found variants by annotation file, map$file_idx has no NA
+        file_ids <- map$file_idx
+        if (!inherits(file_ids, "Rle"))
+            file_ids <- Rle(as.integer(file_ids))
+        file_vi_st <- cumsum(runLength(file_ids))
+        # add each annotation variable
         for (i in seq_along(varnm))
         {
             if (verbose)
             {
-                cat("    adding ", sQuote(colnm[i]), " (", tm(), ") ...\n    ",
-                    sep="")
+                cat("    adding ", sQuote(colnm[i]), " (", tm(),
+                    ") ...\n", sep="")
             }
-            # set a filter to get data
-            v <- seqGetData(f, varnm[i], .tolist=TRUE)
-            if (rerow) v <- v[ii]
+            v <- lapply(seq_len(nrun(file_ids)), function(j)
+            {
+                f <- annot_gds[[runValue(file_ids)[j]]]
+                ii <- map$variant_idx[
+                    seq.int(file_vi_st[j], length.out=runLength(file_ids)[j])]
+                ii <- seqSetFilter(f, variant.sel=ii, ret.idx=TRUE,
+                    warn=FALSE, verbose=FALSE)$variant_idx
+                seqGetData(f, varnm[i], .tolist=TRUE)[ii]
+            })
+            if (length(v) == 1L)
+                v <- v[[1L]]
+            else
+                v <- unlist(v, recursive=FALSE, use.names=FALSE)
+            if (verbose) cat("    ")
             seqAddValue(outgds, paste0(rootnm, "/", colnm[i]), v,
                 replace=TRUE, verbose=verbose, verbose.attr=FALSE)
             remove(v)
-        }
-        # optimize ...
-        if (is.character(add_to_gds))
-        {
-            if (verbose)
-                cat("Optimize the access efficiency ...\n")
-            seqClose(outgds)
-            outgds <- NULL
-            cleanup.gds(add_to_gds, verbose=verbose)
         }
         # return
         invisible()
@@ -539,15 +526,19 @@ seqAnnotateVCF <- function(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
 
 # Annotate a GDS file with a file name input
 seqAnnotateGDS <- function(gds_fn, annot_gds, varnm, add_to_gds=FALSE,
-    no_sample=TRUE, root="", ..., verbose=TRUE)
+    no_sample=TRUE, root="", cleanup=FALSE, ..., verbose=TRUE)
 {
     # check
     stopifnot(is.character(gds_fn), length(gds_fn)==1L)
     if (isTRUE(verbose)) .cat("Open ", sQuote(gds_fn))
-    gds <- seqOpen(gds_fn)
-    on.exit(seqClose(gds))
+    gds <- seqOpen(gds_fn, readonly=!isTRUE(add_to_gds))
+    on.exit({
+        seqClose(gds)
+        if (isTRUE(add_to_gds) && isTRUE(cleanup))
+            cleanup.gds(gds_fn, verbose=verbose)
+    })
     # process
     ann_gdsfile(gds, annot_gds, varnm, add_to_gds, no_sample, root,
-        ..., verbose=verbose)
+        cleanup=cleanup, ..., verbose=verbose)
 }
 

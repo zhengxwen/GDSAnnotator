@@ -5,8 +5,8 @@ import(SeqArray)
 importFrom(utils, read.table, read.csv, flush.console, write.table, str, tail,
     type.convert, untar)
 importFrom(readr, read_csv)
-importFrom(S4Vectors, nrun, DataFrame, Rle)
-importFrom(IRanges, IRanges)
+importFrom(IRanges, IRanges, which)
+importFrom(S4Vectors, nrun, DataFrame, Rle, runLength, runValue)
 importFrom(GenomicRanges, GRanges, GRangesList)
 
 

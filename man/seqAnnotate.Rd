@@ -20,13 +20,13 @@
 \S4method{seqAnnotate}{DataFrame}(object, annot_gds, varnm, col_chr="chr",
     col_pos="pos", col_ref="ref", col_alt="alt", ..., verbose=TRUE)
 \S4method{seqAnnotate}{SeqVarGDSClass}(object, annot_gds, varnm,
-    add_to_gds=FALSE, no_sample=TRUE, root="", ..., verbose=TRUE)
+    add_to_gds=FALSE, no_sample=TRUE, root="", cleanup=FALSE, ..., verbose=TRUE)
 \S4method{seqAnnotate}{character}(object, annot_gds, varnm, split="[-_:]", ...,
     verbose=TRUE)
 \S4method{seqAnnotate}{GRanges}(object, annot_gds, varnm, ..., verbose=TRUE)
 \S4method{seqAnnotate}{GRangesList}(object, annot_gds, varnm, ..., verbose=TRUE)
 seqAnnotateGDS(gds_fn, annot_gds, varnm, add_to_gds=FALSE, no_sample=TRUE,
-    root="", ..., verbose=TRUE)
+    root="", cleanup=FALSE, ..., verbose=TRUE)
 seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
 }
 \arguments{
@@ -57,6 +57,8 @@ seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
     \item{root}{character, to save the annotated GDS nodes to a \code{root}
         node (using "annotation/info/root"); if \code{root=""}, use
         "annotation/info" instead}
+    \item{cleanup}{if \code{TRUE}, call \code{cleanup.gds} on the output
+        GDS file when \code{add_to_gds} is a file name}
     \item{split}{regular expression to split the character vector in
         \code{object} by using \code{strsplit}, using "-", "_" or ":" by
         default}
