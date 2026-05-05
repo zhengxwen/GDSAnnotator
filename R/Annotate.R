@@ -287,11 +287,18 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         varnm <- .annot_list(annot_gds[[1L]])
     if (is.null(varnm)) varnm <- character()
     stopifnot(is.character(varnm))
-    # process
+    # read data 
+    if (isTRUE(verbose)) cat("Reading chromosome")
     chr <- seqGetData(object, "$chromosome")
+    if (isTRUE(verbose)) cat(", position")
     pos <- seqGetData(object, "position")
+    if (isTRUE(verbose)) cat(", reference allele")
     ref <- seqGetData(object, "$ref")
+    if (isTRUE(verbose)) cat(", alternative allele")
     alt <- seqGetData(object, "$alt")
+    if (isTRUE(verbose)) cat("\n")
+    # process
+    if (isTRUE(verbose)) cat("Processing annotation ...\n")
     if (isFALSE(add_to_gds) || length(varnm)==0L)
     {
         # return DataFrame
@@ -530,8 +537,15 @@ seqAnnotateGDS <- function(gds_fn, annot_gds, varnm, add_to_gds=FALSE,
 {
     # check
     stopifnot(is.character(gds_fn), length(gds_fn)==1L)
-    if (isTRUE(verbose)) .cat("Open ", sQuote(gds_fn))
+    if (isTRUE(verbose))
+        cat("Open", sQuote(gds_fn))
     gds <- seqOpen(gds_fn, readonly=!isTRUE(add_to_gds))
+    if (isTRUE(verbose))
+    {
+        dm <- seqSummary(gds, "genotype", verbose=FALSE)$dim
+        cat(" [", prettyNum(dm[3L], big.mark=",", scientific=FALSE),
+            " variants]\n", sep="")
+    }
     on.exit({
         seqClose(gds)
         if (isTRUE(add_to_gds) && isTRUE(cleanup))
