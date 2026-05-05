@@ -61,7 +61,8 @@ seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
         GDS file when \code{add_to_gds} is a file name}
     \item{split}{regular expression to split the character vector in
         \code{object} by using \code{strsplit}, using "-", "_" or ":" by
-        default}
+        default, e.g., "22-23413241-A-G" will be split into "22", "23413241",
+        "A" and "G"}
     \item{verbose}{if \code{TRUE}, show information}
     \item{...}{additional arguments passed to specific methods}
 }
