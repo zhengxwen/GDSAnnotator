@@ -6,7 +6,7 @@
 }
 \usage{
 seqToGDS_VEP(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root="CSQ", bsize=100000L, verbose=TRUE)
+    root="CSQ", bsize=500000L, verbose=TRUE)
 }
 \arguments{
     \item{vcf_fn}{the path(es) of VCF file from Ensembl-VEP output}

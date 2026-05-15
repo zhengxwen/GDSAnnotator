@@ -202,8 +202,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     v
 }
 
-.vep_vcf <- function(vcf_fn, out_fn, compress, root="CSQ", bsize=100000L,
-    verbose=TRUE)
+.vep_vcf <- function(vcf_fn, out_fn, compress, root, bsize, verbose)
 {
     # vcf => gds
     attr(verbose, "header_no_time") <- TRUE
@@ -234,7 +233,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 }
 
 seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root="CSQ", bsize=100000L, verbose=TRUE)
+    root="CSQ", bsize=500000L, verbose=TRUE)
 {
     # check
     stopifnot(is.character(vcf_fn), length(vcf_fn)>0L)
@@ -281,6 +280,8 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
             .cat("Recompressing (", tm(), ") ...")
         seqRecompress(out_fn, compress=compress, optimize=TRUE,
             verbose=verbose)
+    } else {
+        cleanup.gds(out_fn, verbose=verbose)
     }
 
     if (verbose) .cat("##> ", tm())
@@ -294,8 +295,7 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 # Convert SnpEff to a SeqArray GDS file
 #
 
-.snpeff_vcf <- function(vcf_fn, out_fn, compress,
-    root_lst=c("ANN", "LOF", "NMD"), bsize=100000L, verbose=TRUE)
+.snpeff_vcf <- function(vcf_fn, out_fn, compress, root_lst, bsize, verbose)
 {
     # vcf => gds
     attr(verbose, "header_no_time") <- TRUE
@@ -328,7 +328,7 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 }
 
 seqToGDS_SnpEff <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root=c("ANN", "LOF", "NMD"), bsize=100000L, verbose=TRUE)
+    root=c("ANN", "LOF", "NMD"), bsize=500000L, verbose=TRUE)
 {
     # check
     stopifnot(is.character(vcf_fn), length(vcf_fn)>0L)
@@ -362,10 +362,10 @@ seqToGDS_SnpEff <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
             .cat("Recompressing (", tm(), ") ...")
         seqRecompress(out_fn, compress=compress, optimize=TRUE,
             verbose=verbose)
+    } else {
+        cleanup.gds(out_fn, verbose=verbose)
     }
-
     if (verbose) .cat("##> ", tm())
     # output
     invisible(normalizePath(out_fn))
 }
-
