@@ -112,7 +112,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 # using block-based processing to reduce memory usage
 #
 
-.split_annot_blocks <- function(f, nm_root, nm_root2, nm_lst, nm_desp=NULL,
+.split_annot_blocks <- function(f, nm_root, nm_root2, nm_lst, nm_desp,
     compress, bsize, type_fn=NULL, verbose=TRUE)
 {
     # create output folder
@@ -141,21 +141,28 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     }
     # block-by-block processing
     if (verbose) cat("Processing:\n")
-    seqBlockApply(f, nm_root, function(chunk)
+    seqBlockApply(f, nm_root, function(bk)
     {
+        if (inherits(bk, "SeqVarDataList"))
+        {
+            ss <- strsplit(bk$data, "|", fixed=TRUE)
+            ns <- bk$length
+        } else {
+            ss <- strsplit(bk, "|", fixed=TRUE)
+            ns <- rep(1L, length(bk))
+        }
         for (i in seq_len(n_fields))
         {
             # extract sub-field i from each variant's annotation(s)
-            v <- lapply(chunk, function(s)
-                vapply(strsplit(s, "|", fixed=TRUE), `[`, "", i=i))
+            v <- vapply(ss, `[`, "", i=i)
             # apply type conversion if provided
             if (!is.null(type_fn)) v <- type_fn(nm_lst[i], v)
             # append data and index
-            suppressWarnings(append.gdsn(data_nodes[[i]], unlist(v)))
-            append.gdsn(idx_nodes[[i]], lengths(v))
+            suppressWarnings(append.gdsn(data_nodes[[i]], v))
+            append.gdsn(idx_nodes[[i]], ns)
         }
         NULL  # return 
-    }, as.is="none", bsize=bsize, .tolist=TRUE, .progress=verbose)
+    }, as.is="none", bsize=bsize, .progress=verbose)
     # finalize all nodes
     for (i in seq_len(n_fields))
     {
@@ -233,7 +240,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 }
 
 seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root="CSQ", bsize=500000L, verbose=TRUE)
+    root="CSQ", bsize=100000L, verbose=TRUE)
 {
     # check
     stopifnot(is.character(vcf_fn), length(vcf_fn)>0L)
@@ -278,10 +285,10 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     {
         if (verbose)
             .cat("Recompressing (", tm(), ") ...")
-        seqRecompress(out_fn, compress=compress, optimize=TRUE,
-            verbose=verbose)
+        # seqRecompress(out_fn, compress=compress, optimize=TRUE,
+        #     verbose=verbose)
     } else {
-        cleanup.gds(out_fn, verbose=verbose)
+        # cleanup.gds(out_fn, verbose=verbose)
     }
 
     if (verbose) .cat("##> ", tm())
@@ -328,7 +335,7 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 }
 
 seqToGDS_SnpEff <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root=c("ANN", "LOF", "NMD"), bsize=500000L, verbose=TRUE)
+    root=c("ANN", "LOF", "NMD"), bsize=100000L, verbose=TRUE)
 {
     # check
     stopifnot(is.character(vcf_fn), length(vcf_fn)>0L)
