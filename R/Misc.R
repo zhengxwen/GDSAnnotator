@@ -202,14 +202,15 @@ seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
 
 
 # Group the variants by annotation and return a SeqUnitListClass object
-seqUnitGroupAnnot <- function(gdsfile, varnm, by=1L, cond=NULL,
+seqUnitGroupAnnot <- function(gdsfile, varnm, by=1L, cond=NULL, use_info=TRUE,
     bsize=100000L, verbose=TRUE, ...)
 {
     # check
     stopifnot(is.character(varnm), length(varnm)>0L)
+    stopifnot(is.logical(use_info), length(use_info)==1L, !is.na(use_info))
     stopifnot(is.character(by) || is.numeric(by), length(by)>0L)
     if (is.character(by)) by <- match(by, varnm)
-    if (anyNA(by) || !all(1<=by | by<=length(varnm)))
+    if (anyNA(by) || !all(by>=1L & by<=length(varnm)))
     {
         stop("'by' should be one or more of ", paste(varnm, collapse=", "),
             ", or the index/indices.")
@@ -230,6 +231,15 @@ seqUnitGroupAnnot <- function(gdsfile, varnm, by=1L, cond=NULL,
         stop(cond_err)
 
     stopifnot(is.logical(verbose), length(verbose)==1L)
+    # prefix the INFO path (after 'by'/'cond' have been matched to 'varnm'),
+    # keeping the short names so the group columns are labelled sensibly
+    if (isTRUE(use_info))
+    {
+        nm <- names(varnm)
+        if (is.null(nm)) nm <- varnm
+        varnm <- paste0("annotation/info/", varnm)
+        names(varnm) <- nm
+    }
     # check gdsfile
     if (is.character(gdsfile))
     {
@@ -245,6 +255,17 @@ seqUnitGroupAnnot <- function(gdsfile, varnm, by=1L, cond=NULL,
     # grouping function
     group <- function(x, ...)
     {
+        # normalize each annotation field to list(data=, length=) form, so
+        # that scalar (Number=1) and variable-length fields are handled alike
+        # (the last element of 'x' is '$variant_index' and is left untouched)
+        nfield <- length(x) - 1L
+        for (i in seq_len(nfield))
+        {
+            if (!inherits(x[[i]], "SeqVarDataList"))
+                x[[i]] <- structure(
+                    list(data=x[[i]], length=rep_len(1L, length(x[[i]]))),
+                    class="SeqVarDataList")
+        }
         # condition
         for (i in seq_along(cond))
         {
@@ -257,7 +278,8 @@ seqUnitGroupAnnot <- function(gdsfile, varnm, by=1L, cond=NULL,
                     x[[i]] <- x[[i]] %in% v
             } else if (is.function(v))
             {
-                x[[i]] <- v(x[[i]], ...)
+                # apply to the value vector, keeping the list(data=,length=) form
+                x[[i]]$data <- v(x[[i]]$data, ...)
             }
         }
         # filter based on condition
@@ -325,7 +347,7 @@ seqUnitGroupAnnot <- function(gdsfile, varnm, by=1L, cond=NULL,
     i2 <- vapply(ans, function(z) z[max(length(z), 1L)], 0L)
     ii <- seqSetFilter(gdsfile, variant.sel=c(i1, i2), action="push+set",
         ret.idx=TRUE, warn=FALSE, verbose=FALSE)$variant_idx
-    on.exit(seqFilterPop(gdsfile), add=TRUE)
+    on.exit(seqFilterPop(gdsfile), add=TRUE, after=FALSE)
     i1 <- seq_along(ans)
     df$chr <- seqGetData(gdsfile, "chromosome")[ii[i1]]
     pos <- seqGetData(gdsfile, "position")[ii]

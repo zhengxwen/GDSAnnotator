@@ -38,7 +38,7 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     }
 
     # compression algorithm
-    map_compress <- c(LZMA="LZMA_ra", ZIP="ZIP_RA", none="")
+    map_compress <- c(LZMA="LZMA_RA", ZIP="ZIP_RA", none="")
     compress1 <- compress2 <- map_compress[compress]
     if (compress=="LZMA") compress1 <- "ZIP_RA"  # reduce memory usage
 
@@ -110,13 +110,13 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     {
         nd <- index.gdsn(outfile, nm)
         readmode.gdsn(nd)
-        SeqArray:::.DigestCode(nd, verbose=FALSE)
+        digest.gdsn(nd, "md5", action="add")
     }
     for (nm in nm_others)
     {
         nd <- index.gdsn(nd_root, nm)
         readmode.gdsn(nd)
-        SeqArray:::.DigestCode(nd, verbose=FALSE)
+        digest.gdsn(nd, "md5", action="add")
     }
 
     # recompress?

@@ -154,7 +154,8 @@ ann_pos_allele <- function(gds, chr, pos, ref, alt, varnm, verbose=TRUE)
         ans <- DataFrame(ans)
         if (l_verbose) cat("\n")
         # ii maps each input to the filtered set row (NA = not found)
-        ans <- ans[ii, ]
+        # drop=FALSE: keep a DataFrame even when a single annotation is requested
+        ans <- ans[ii, , drop=FALSE]
         ans$..no <- is.na(ii)
         ans
     } else {
@@ -212,7 +213,7 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
                 # some variants are not found in this file,
                 # so they will be processed in the next file(s)
                 idx <<- idx[d$..no]
-                d <- d[!d$..no, ]
+                d <- d[!d$..no, , drop=FALSE]
             }
             d$..no <- NULL  # remove the temporary column
             # return
@@ -224,7 +225,7 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
     # combine results in original input order
     ans <- if (length(ans) == 1L) ans[[1L]] else do.call(rbind, ans)
     # return
-    ans <- ans[order(ans$..idx), ]
+    ans <- ans[order(ans$..idx), , drop=FALSE]
     ans$..idx <- NULL  # remove the temporary index column
     ans
 }
@@ -352,7 +353,8 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         file_ids <- map$file_idx
         if (!inherits(file_ids, "Rle"))
             file_ids <- Rle(as.integer(file_ids))
-        file_vi_st <- cumsum(runLength(file_ids))
+        # starting offset of each run (1, rl1+1, rl1+rl2+1, ...)
+        file_vi_st <- cumsum(c(1L, runLength(file_ids)))
         # add each annotation variable
         for (i in seq_along(varnm))
         {

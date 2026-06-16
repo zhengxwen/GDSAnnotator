@@ -1,1 +1,16 @@
-citHeader("To cite GDSAnnotator in publications use:")
+citHeader("To cite the GDSAnnotator package in publications use:")
+
+ver <- meta$Version
+if (is.null(ver) || !nzchar(ver)) ver <- packageVersion("GDSAnnotator")
+
+bibentry(bibtype = "Manual",
+    title   = paste("GDSAnnotator: Whole-genome variant annotation data",
+                    "manipulation using GDS files"),
+    author  = c(person("Xiuwen", "Zheng")),
+    year    = "2026",
+    note    = paste("R package version", ver),
+    url     = "https://github.com/zhengxwen/GDSAnnotator",
+    textVersion = paste0(
+        "Xiuwen Zheng (2026). GDSAnnotator: Whole-genome variant annotation ",
+        "data manipulation using GDS files. R package version ", ver,
+        ". https://github.com/zhengxwen/GDSAnnotator"))

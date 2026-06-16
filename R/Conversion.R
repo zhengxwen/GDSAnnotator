@@ -285,10 +285,10 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     {
         if (verbose)
             .cat("Recompressing (", tm(), ") ...")
-        # seqRecompress(out_fn, compress=compress, optimize=TRUE,
-        #     verbose=verbose)
+        seqRecompress(out_fn, compress=compress, optimize=TRUE,
+            verbose=verbose)
     } else {
-        # cleanup.gds(out_fn, verbose=verbose)
+        cleanup.gds(out_fn, verbose=verbose)
     }
 
     if (verbose) .cat("##> ", tm())
