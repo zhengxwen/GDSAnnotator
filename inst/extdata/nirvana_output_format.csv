@@ -1,0 +1,42 @@
+Name,Path,Type,Default,Description
+variantType,variantType,string,TRUE,"Variant type (SNV, insertion, deletion, etc.)"
+hgvsg,hgvsg,string,TRUE,HGVS genomic nomenclature
+phylop,phylopScore,float,TRUE,PhyloP conservation score
+gnomad_af,gnomad.allAf,float,TRUE,gnomAD overall allele frequency
+gnomad_an,gnomad.allAn,integer,TRUE,gnomAD overall allele number
+onekg_af,oneKg.allAf,float,TRUE,1000 Genomes overall allele frequency
+revel,revel.score,float,TRUE,REVEL pathogenicity score
+clinvar,clinvar.significance,string,TRUE,ClinVar clinical significance
+gene,transcripts.hgnc,string,TRUE,Gene symbol (HGNC)
+consequence,transcripts.consequence,string,TRUE,Functional consequence (Sequence Ontology term)
+dbsnp,dbsnp,string,FALSE,dbSNP rs identifiers (also stored in annotation/id)
+isReferenceMinorAllele,isReferenceMinorAllele,logical,FALSE,Whether the reference allele is the minor allele
+gnomad_afr_af,gnomad.afrAf,float,FALSE,gnomAD African/African-American allele frequency
+gnomad_amr_af,gnomad.amrAf,float,FALSE,gnomAD Latino/Admixed-American allele frequency
+gnomad_eas_af,gnomad.easAf,float,FALSE,gnomAD East-Asian allele frequency
+gnomad_nfe_af,gnomad.nfeAf,float,FALSE,gnomAD Non-Finnish-European allele frequency
+gnomad_sas_af,gnomad.sasAf,float,FALSE,gnomAD South-Asian allele frequency
+gnomad_fin_af,gnomad.finAf,float,FALSE,gnomAD Finnish allele frequency
+gnomad_asj_af,gnomad.asjAf,float,FALSE,gnomAD Ashkenazi-Jewish allele frequency
+gnomad_oth_af,gnomad.othAf,float,FALSE,gnomAD other-population allele frequency
+gnomad_failed_filter,gnomad.failedFilter,logical,FALSE,gnomAD failed-filter flag
+topmed_af,topmed.allAf,float,FALSE,TOPMed overall allele frequency
+topmed_an,topmed.allAn,integer,FALSE,TOPMed overall allele number
+clinvar_id,clinvar.id,string,FALSE,ClinVar variation accession
+clinvar_review,clinvar.reviewStatus,string,FALSE,ClinVar review status
+clinvar_phenotype,clinvar.phenotypes,string,FALSE,ClinVar associated phenotypes
+cosmic_id,cosmic.id,string,FALSE,COSMIC mutation identifier
+transcript,transcripts.transcript,string,FALSE,Transcript identifier
+transcript_source,transcripts.source,string,FALSE,Transcript source (Ensembl/RefSeq)
+biotype,transcripts.bioType,string,FALSE,Transcript biotype
+hgvsc,transcripts.hgvsc,string,FALSE,HGVS coding-sequence nomenclature
+hgvsp,transcripts.hgvsp,string,FALSE,HGVS protein nomenclature
+sift_prediction,transcripts.siftPrediction,string,FALSE,SIFT prediction
+sift_score,transcripts.siftScore,float,FALSE,SIFT score
+polyphen_prediction,transcripts.polyPhenPrediction,string,FALSE,PolyPhen-2 prediction
+polyphen_score,transcripts.polyPhenScore,float,FALSE,PolyPhen-2 score
+primateai,primateAI.scorePercentile,float,FALSE,PrimateAI score percentile
+spliceai_acceptor_gain,spliceAI.acceptorGainScore,float,FALSE,SpliceAI acceptor-gain score
+spliceai_acceptor_loss,spliceAI.acceptorLossScore,float,FALSE,SpliceAI acceptor-loss score
+spliceai_donor_gain,spliceAI.donorGainScore,float,FALSE,SpliceAI donor-gain score
+spliceai_donor_loss,spliceAI.donorLossScore,float,FALSE,SpliceAI donor-loss score
