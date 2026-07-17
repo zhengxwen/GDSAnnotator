@@ -113,14 +113,15 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 #
 
 .split_annot_blocks <- function(f, nm_root, nm_root2, nm_lst, nm_desp,
-    compress, bsize, type_fn=NULL, verbose=TRUE)
+    nm_uniform, compress, bsize, type_fn=NULL, verbose=TRUE)
 {
     # create output folder
     seqAddValue(f, nm_root2, NULL, verbose=verbose)
     if (verbose)
         .cat("    ", paste(nm_lst, collapse=","))
     n_fields <- length(nm_lst)
-    if (is.null(nm_desp)) nm_desp <- rep("", n_fields)    
+    if (is.null(nm_desp)) nm_desp <- rep("", n_fields)
+    if (is.null(nm_uniform)) nm_uniform <- rep(FALSE, n_fields)
     # pre-create empty GDS nodes for each sub-field
     nd_folder <- index.gdsn(f, nm_root2)
     data_nodes <- vector("list", n_fields)
@@ -136,8 +137,11 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
             storage=tp, valdim=0L, compress=compress)
         if (nzchar(nm_desp[i]))
             put.attr.gdsn(data_nodes[[i]], "Description", nm_desp[i])
-        idx_nodes[[i]] <- add.gdsn(nd_folder, paste0("@", nm),
-            storage="int32", valdim=0L, compress=compress, visible=FALSE)
+        if (!nm_uniform[i])
+        {
+            idx_nodes[[i]] <- add.gdsn(nd_folder, paste0("@", nm),
+                storage="int32", valdim=0L, compress=compress, visible=FALSE)
+        }
     }
     # block-by-block processing
     if (verbose) cat("Processing:\n")
@@ -157,9 +161,16 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
             v <- vapply(ss, `[`, "", i=i)
             # apply type conversion if provided
             if (!is.null(type_fn)) v <- type_fn(nm_lst[i], v)
-            # append data and index
-            suppressWarnings(append.gdsn(data_nodes[[i]], v))
-            append.gdsn(idx_nodes[[i]], ns)
+            if (nm_uniform[i])
+            {
+                # uniform: one value per variant (take first of each group)
+                idx <- cumsum(c(1L, head(ns, -1L)))
+                suppressWarnings(append.gdsn(data_nodes[[i]], v[idx]))
+            } else {
+                # variable-length: append all data and index
+                suppressWarnings(append.gdsn(data_nodes[[i]], v))
+                append.gdsn(idx_nodes[[i]], ns)
+            }
         }
         NULL  # return 
     }, as.is="none", bsize=bsize, .progress=verbose)
@@ -167,7 +178,8 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     for (i in seq_len(n_fields))
     {
         readmode.gdsn(data_nodes[[i]])
-        readmode.gdsn(idx_nodes[[i]])
+        if (!nm_uniform[i])
+            readmode.gdsn(idx_nodes[[i]])
     }
     # return
     invisible()
@@ -233,9 +245,14 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         j <- match(nm, .packageEnv$vep$Name)
         if (!is.na(j)) .packageEnv$vep$Description[j] else ""
     }, "")
+    # get uniform flags for each field
+    nm_uniform <- vapply(nm_lst, function(nm) {
+        j <- match(nm, .packageEnv$vep$Name)
+        if (!is.na(j)) isTRUE(.packageEnv$vep$Uniform[j] == "T") else FALSE
+    }, FALSE)
     # split annotation into sub-fields using block processing
-    .split_annot_blocks(f, nm_root, nm_root2, nm_lst, nm_desp, compress,
-        bsize, type_fn=.vep_type_fn, verbose=verbose)
+    .split_annot_blocks(f, nm_root, nm_root2, nm_lst, nm_desp, nm_uniform,
+        compress, bsize, type_fn=.vep_type_fn, verbose=verbose)
     # remove the original root node if keep=FALSE
     if (isFALSE(keep))
     {
@@ -338,7 +355,7 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         nm_lst <- trimws(unlist(strsplit(s, "|", fixed=TRUE)))
         # split annotation into sub-fields using block processing
         .split_annot_blocks(f, nm_root, nm_root2, nm_lst, nm_desp=NULL,
-            compress, bsize, type_fn=NULL, verbose=verbose)
+            nm_uniform=NULL, compress, bsize, type_fn=NULL, verbose=verbose)
         # remove the original root node if keep=FALSE
         if (isFALSE(keep))
         {
