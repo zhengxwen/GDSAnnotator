@@ -248,7 +248,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     # get uniform flags for each field
     nm_uniform <- vapply(nm_lst, function(nm) {
         j <- match(nm, .packageEnv$vep$Name)
-        if (!is.na(j)) isTRUE(.packageEnv$vep$Uniform[j] == "T") else FALSE
+        if (!is.na(j)) isTRUE(.packageEnv$vep$Uniform[j]) else FALSE
     }, FALSE)
     # split annotation into sub-fields using block processing
     .split_annot_blocks(f, nm_root, nm_root2, nm_lst, nm_desp, nm_uniform,
@@ -389,7 +389,7 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         }, "")
         nm_uniform <- vapply(nm_lst, function(nm) {
             j <- match(nm, .packageEnv$snpeff_sub$Name)
-            if (!is.na(j)) isTRUE(.packageEnv$snpeff_sub$Uniform[j] == "T") else FALSE
+            if (!is.na(j)) isTRUE(.packageEnv$snpeff_sub$Uniform[j]) else FALSE
         }, FALSE)
         # determine type_fn: use it if any field has a Type defined
         type_fn <- NULL

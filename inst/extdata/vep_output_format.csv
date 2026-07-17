@@ -75,10 +75,10 @@ BIOTYPE,Biotype of transcript or regulatory feature,,
 APPRIS,Annotates alternatively spliced transcripts as primary or alternate based on a range of computational methods,,
 TSL,Transcript support level,,
 GENCODE_PRIMARY,Reports if transcript belongs to GENCODE primary subset,,
-PUBMED,Pubmed ID(s) of publications that cite existing variant,,
+PUBMED,Pubmed ID(s) of publications that cite existing variant,,T
 SOMATIC,Somatic status of existing variant(s); multiple values correspond to multiple values in the Existing_variation field,,
-PHENO,"Indicates if existing variant is associated with a phenotype, disease or trait",,
-GENE_PHENO,"Indicates if overlapped gene is associated with a phenotype, disease or trait",,
+PHENO,"Indicates if existing variant is associated with a phenotype, disease or trait",,T
+GENE_PHENO,"Indicates if overlapped gene is associated with a phenotype, disease or trait",,T
 ALLELE_NUM,"Allele number from input; 0 is reference, 1 is first alternate etc",,
 MINIMISED,Alleles in this variant have been converted to minimal representation before consequence calculation,,
 PICK,indicates if this block of consequence data was picked,logical,
