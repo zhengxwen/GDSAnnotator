@@ -327,6 +327,33 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 # Convert SnpEff to a SeqArray GDS file
 #
 
+# SnpEff type conversion function
+.snpeff_type_fn <- function(nm, v)
+{
+    # check
+    stopifnot(is.character(nm), length(nm)==1L)
+    stopifnot(!is.null(.packageEnv$snpeff_sub))
+    # variable names and types
+    j <- match(nm, .packageEnv$snpeff_sub$Name)
+    if (!is.na(j))
+    {
+        tp <- .packageEnv$snpeff_sub$Type[j]
+        if (is.atomic(v))
+        {
+            v <- switch(tp,
+                integer = as.integer(v),
+                numeric = as.numeric(v),
+                v)
+        } else {
+            v <- switch(tp,
+                integer = lapply(v, as.integer),
+                numeric = lapply(v, as.numeric),
+                v)
+        }
+    }
+    v
+}
+
 .snpeff_vcf <- function(vcf_fn, out_fn, compress, root_lst, keep, bsize,
     verbose)
 {
@@ -353,9 +380,24 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         s <- gsub("'|\\s", "", s)
         s <- gsub("/", "-", s, fixed=TRUE)
         nm_lst <- trimws(unlist(strsplit(s, "|", fixed=TRUE)))
+        # look up descriptions, types and uniform flags from CSV
+        .packageEnv$snpeff_sub <- .packageEnv$snpeff[
+            .packageEnv$snpeff$Field == root, , drop=FALSE]
+        nm_desp <- vapply(nm_lst, function(nm) {
+            j <- match(nm, .packageEnv$snpeff_sub$Name)
+            if (!is.na(j)) .packageEnv$snpeff_sub$Description[j] else ""
+        }, "")
+        nm_uniform <- vapply(nm_lst, function(nm) {
+            j <- match(nm, .packageEnv$snpeff_sub$Name)
+            if (!is.na(j)) isTRUE(.packageEnv$snpeff_sub$Uniform[j] == "T") else FALSE
+        }, FALSE)
+        # determine type_fn: use it if any field has a Type defined
+        type_fn <- NULL
+        if (any(nzchar(.packageEnv$snpeff_sub$Type)))
+            type_fn <- .snpeff_type_fn
         # split annotation into sub-fields using block processing
-        .split_annot_blocks(f, nm_root, nm_root2, nm_lst, nm_desp=NULL,
-            nm_uniform=NULL, compress, bsize, type_fn=NULL, verbose=verbose)
+        .split_annot_blocks(f, nm_root, nm_root2, nm_lst, nm_desp,
+            nm_uniform, compress, bsize, type_fn=type_fn, verbose=verbose)
         # remove the original root node if keep=FALSE
         if (isFALSE(keep))
         {
@@ -383,6 +425,20 @@ seqToGDS_SnpEff <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     map_compress <- c(LZMA="LZMA_RA", ZIP="ZIP_RA", none="")
     compress1 <- compress2 <- map_compress[compress]
     if (compress=="LZMA") compress1 <- "ZIP_RA"  # reduce memory usage
+
+    # load variable names and types
+    if (is.null(.packageEnv$snpeff))
+    {
+        .packageEnv$snpeff <- read.csv(system.file("extdata",
+            "snpeff_output_format.csv", package="GDSAnnotator",
+            mustWork=TRUE))
+        nm <- c("Field", "Name", "Description", "Type")
+        if (!all(nm %in% colnames(.packageEnv$snpeff)))
+        {
+            stop("The internal 'snpeff_output_format.csv' should have ",
+                "the following columns: ", paste(nm, collapse=","), ".")
+        }
+    }
 
     # create the gds file
     if (verbose)
