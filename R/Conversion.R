@@ -209,7 +209,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     v
 }
 
-.vep_vcf <- function(vcf_fn, out_fn, compress, root, bsize, verbose)
+.vep_vcf <- function(vcf_fn, out_fn, compress, root, keep, bsize, verbose)
 {
     # vcf => gds
     attr(verbose, "header_no_time") <- TRUE
@@ -236,17 +236,25 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     # split annotation into sub-fields using block processing
     .split_annot_blocks(f, nm_root, nm_root2, nm_lst, nm_desp, compress,
         bsize, type_fn=.vep_type_fn, verbose=verbose)
+    # remove the original root node if keep=FALSE
+    if (isFALSE(keep))
+    {
+        delete.gdsn(index.gdsn(f, nm_root))
+        if (verbose)
+            .cat("    removed '", nm_root, "'")
+    }
     invisible()
 }
 
 seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root="CSQ", bsize=100000L, verbose=TRUE)
+    root="CSQ", keep=TRUE, bsize=100000L, verbose=TRUE)
 {
     # check
     stopifnot(is.character(vcf_fn), length(vcf_fn)>0L)
     stopifnot(is.character(out_fn), length(out_fn)==1L)
     compress <- match.arg(compress)
     stopifnot(is.character(root), length(root)==1L)
+    stopifnot(is.logical(keep), length(keep)==1L)
     stopifnot(is.numeric(bsize), length(bsize)==1L, bsize>=1L)
     stopifnot(is.logical(verbose), length(verbose)==1L, !is.na(verbose))
 
@@ -278,7 +286,7 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     }
 
     # import from VCF
-    .vep_vcf(vcf_fn, out_fn, compress1, root, as.integer(bsize), verbose)
+    .vep_vcf(vcf_fn, out_fn, compress1, root, keep, as.integer(bsize), verbose)
 
     # recompress?
     if (compress1 != compress2)
@@ -302,7 +310,8 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 # Convert SnpEff to a SeqArray GDS file
 #
 
-.snpeff_vcf <- function(vcf_fn, out_fn, compress, root_lst, bsize, verbose)
+.snpeff_vcf <- function(vcf_fn, out_fn, compress, root_lst, keep, bsize,
+    verbose)
 {
     # vcf => gds
     attr(verbose, "header_no_time") <- TRUE
@@ -330,18 +339,26 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         # split annotation into sub-fields using block processing
         .split_annot_blocks(f, nm_root, nm_root2, nm_lst, nm_desp=NULL,
             compress, bsize, type_fn=NULL, verbose=verbose)
+        # remove the original root node if keep=FALSE
+        if (isFALSE(keep))
+        {
+            delete.gdsn(index.gdsn(f, nm_root))
+            if (verbose)
+                .cat("    removed '", nm_root, "'")
+        }
     }
     invisible()
 }
 
 seqToGDS_SnpEff <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root=c("ANN", "LOF", "NMD"), bsize=100000L, verbose=TRUE)
+    root=c("ANN", "LOF", "NMD"), keep=TRUE, bsize=100000L, verbose=TRUE)
 {
     # check
     stopifnot(is.character(vcf_fn), length(vcf_fn)>0L)
     stopifnot(is.character(out_fn), length(out_fn)==1L)
     compress <- match.arg(compress)
     stopifnot(is.character(root), length(root) > 0)
+    stopifnot(is.logical(keep), length(keep)==1L)
     stopifnot(is.numeric(bsize), length(bsize)==1L, bsize>=1L)
     stopifnot(is.logical(verbose), length(verbose)==1L, !is.na(verbose))
 
@@ -360,7 +377,8 @@ seqToGDS_SnpEff <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     }
 
     # import from VCF
-    .snpeff_vcf(vcf_fn, out_fn, compress1, root, as.integer(bsize), verbose)
+    .snpeff_vcf(vcf_fn, out_fn, compress1, root, keep, as.integer(bsize),
+        verbose)
 
     # recompress?
     if (compress1 != compress2)

@@ -6,7 +6,7 @@
 }
 \usage{
 seqToGDS_SnpEff(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root=c("ANN", "LOF", "NMD"), bsize=100000L, verbose=TRUE)
+    root=c("ANN", "LOF", "NMD"), keep=TRUE, bsize=100000L, verbose=TRUE)
 }
 \arguments{
     \item{vcf_fn}{the path(es) of VCF file from SnpEff output}
@@ -14,6 +14,9 @@ seqToGDS_SnpEff(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     \item{compress}{compression method (LZMA by default), \code{"LZMA"} has
         a higher compression ratio than \code{"ZIP"}}
     \item{root}{the name(s) of INFO field in the input VCF file to be parsed}
+    \item{keep}{if \code{TRUE} or \code{NA}, keep the original \code{root}
+        node(s) in the output GDS file; if \code{FALSE}, remove them after
+        splitting into sub-fields}
     \item{bsize}{the block size (number of variants per chunk) for processing
         annotations; a smaller value reduces peak memory usage at the cost of
         more iterations}

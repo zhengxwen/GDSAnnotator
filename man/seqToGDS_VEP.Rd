@@ -6,7 +6,7 @@
 }
 \usage{
 seqToGDS_VEP(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root="CSQ", bsize=100000L, verbose=TRUE)
+    root="CSQ", keep=TRUE, bsize=100000L, verbose=TRUE)
 }
 \arguments{
     \item{vcf_fn}{the path(es) of VCF file from Ensembl-VEP output}
@@ -15,6 +15,9 @@ seqToGDS_VEP(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         a higher compression ratio than \code{"ZIP"}}
     \item{root}{the name of INFO field in the input VCF file, the default is
         \code{"CSQ"}}
+    \item{keep}{if \code{TRUE} or \code{NA}, keep the original \code{root}
+        node in the output GDS file; if \code{FALSE}, remove it after
+        splitting into sub-fields}
     \item{bsize}{the block size (number of variants per chunk) for processing
         annotations; a smaller value reduces peak memory usage at the cost of
         more iterations}
