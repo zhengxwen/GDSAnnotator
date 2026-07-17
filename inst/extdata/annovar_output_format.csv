@@ -1,0 +1,92 @@
+Name,Description,Type
+Func.refGene,Functional category of the variant relative to known genes (e.g. exonic intronic UTR5 UTR3 splicing intergenic),
+Gene.refGene,Gene name from RefSeq annotation,
+GeneDetail.refGene,Detailed annotation for non-exonic variants (e.g. distance to gene or splicing notation),
+ExonicFunc.refGene,Functional consequence for exonic variants (e.g. nonsynonymous SNV synonymous SNV frameshift),
+AAChange.refGene,Amino acid change annotation in format Gene:Transcript:Exon:cDNA:Protein,
+Func.refGeneWithVer,Functional category of the variant relative to known genes (with transcript version),
+Gene.refGeneWithVer,Gene name from RefSeq annotation (with transcript version),
+GeneDetail.refGeneWithVer,Detailed annotation for non-exonic variants (with transcript version),
+ExonicFunc.refGeneWithVer,Functional consequence for exonic variants (with transcript version),
+AAChange.refGeneWithVer,Amino acid change annotation with versioned transcripts,
+Func.ensGene,Functional category using Ensembl gene annotation,
+Gene.ensGene,Gene name from Ensembl annotation,
+GeneDetail.ensGene,Detailed annotation for non-exonic variants (Ensembl),
+ExonicFunc.ensGene,Functional consequence for exonic variants (Ensembl),
+AAChange.ensGene,Amino acid change annotation (Ensembl),
+Func.knownGene,Functional category using UCSC Known Gene annotation,
+Gene.knownGene,Gene name from UCSC Known Gene annotation,
+GeneDetail.knownGene,Detailed annotation for non-exonic variants (UCSC),
+ExonicFunc.knownGene,Functional consequence for exonic variants (UCSC),
+AAChange.knownGene,Amino acid change annotation (UCSC),
+cytoBand,Cytogenetic band location,
+gnomAD_exome_AF,gnomAD exome allele frequency (all populations),numeric
+gnomAD_exome_AF_popmax,gnomAD exome maximum allele frequency across populations,numeric
+gnomAD_exome_AF_male,gnomAD exome allele frequency in males,numeric
+gnomAD_exome_AF_female,gnomAD exome allele frequency in females,numeric
+gnomAD_exome_AF_afr,gnomAD exome allele frequency in African/African-American,numeric
+gnomAD_exome_AF_amr,gnomAD exome allele frequency in Latino/Admixed American,numeric
+gnomAD_exome_AF_asj,gnomAD exome allele frequency in Ashkenazi Jewish,numeric
+gnomAD_exome_AF_eas,gnomAD exome allele frequency in East Asian,numeric
+gnomAD_exome_AF_fin,gnomAD exome allele frequency in Finnish,numeric
+gnomAD_exome_AF_nfe,gnomAD exome allele frequency in Non-Finnish European,numeric
+gnomAD_exome_AF_oth,gnomAD exome allele frequency in Other,numeric
+gnomAD_exome_AF_sas,gnomAD exome allele frequency in South Asian,numeric
+gnomAD_genome_AF,gnomAD genome allele frequency (all populations),numeric
+gnomAD_genome_AF_popmax,gnomAD genome maximum allele frequency across populations,numeric
+gnomAD_genome_AF_afr,gnomAD genome allele frequency in African/African-American,numeric
+gnomAD_genome_AF_amr,gnomAD genome allele frequency in Latino/Admixed American,numeric
+gnomAD_genome_AF_asj,gnomAD genome allele frequency in Ashkenazi Jewish,numeric
+gnomAD_genome_AF_eas,gnomAD genome allele frequency in East Asian,numeric
+gnomAD_genome_AF_fin,gnomAD genome allele frequency in Finnish,numeric
+gnomAD_genome_AF_nfe,gnomAD genome allele frequency in Non-Finnish European,numeric
+gnomAD_genome_AF_oth,gnomAD genome allele frequency in Other,numeric
+gnomAD_genome_AF_sas,gnomAD genome allele frequency in South Asian,numeric
+AF,1000 Genomes allele frequency (all populations),numeric
+AF_afr,1000 Genomes allele frequency in African,numeric
+AF_amr,1000 Genomes allele frequency in Admixed American,numeric
+AF_eas,1000 Genomes allele frequency in East Asian,numeric
+AF_eur,1000 Genomes allele frequency in European,numeric
+AF_sas,1000 Genomes allele frequency in South Asian,numeric
+avsnp151,dbSNP rs identifier (version 151),
+CLNALLELEID,ClinVar allele identifier,
+CLNDN,ClinVar disease name,
+CLNDISDB,ClinVar disease database name and identifier,
+CLNREVSTAT,ClinVar review status,
+CLNSIG,ClinVar clinical significance,
+SIFT_score,SIFT score (lower is more deleterious),numeric
+SIFT_pred,SIFT prediction (D: Deleterious T: Tolerated),
+Polyphen2_HDIV_score,PolyPhen-2 HDIV score,numeric
+Polyphen2_HDIV_pred,PolyPhen-2 HDIV prediction (D/P/B),
+Polyphen2_HVAR_score,PolyPhen-2 HVAR score,numeric
+Polyphen2_HVAR_pred,PolyPhen-2 HVAR prediction (D/P/B),
+LRT_score,LRT score,numeric
+LRT_pred,LRT prediction (D/N/U),
+MutationTaster_score,MutationTaster score,numeric
+MutationTaster_pred,MutationTaster prediction (A/D/N/P),
+MutationAssessor_score,MutationAssessor score,numeric
+MutationAssessor_pred,MutationAssessor prediction (H/M/L/N),
+FATHMM_score,FATHMM score,numeric
+FATHMM_pred,FATHMM prediction (D/T),
+PROVEAN_score,PROVEAN score,numeric
+PROVEAN_pred,PROVEAN prediction (D/N),
+MetaSVM_score,MetaSVM score,numeric
+MetaSVM_pred,MetaSVM prediction (D/T),
+MetaLR_score,MetaLR score,numeric
+MetaLR_pred,MetaLR prediction (D/T),
+VEST3_score,VEST3 score,numeric
+CADD_raw,CADD raw score,numeric
+CADD_phred,CADD phred-scaled score,numeric
+DANN_score,DANN score,numeric
+fathmm.MKL_coding_score,fathmm-MKL coding score,numeric
+fathmm.MKL_coding_pred,fathmm-MKL coding prediction (D/N),
+integrated_fitCons_score,Integrated fitCons score,numeric
+integrated_confidence_value,Integrated fitCons confidence value,numeric
+GERP.._RS,GERP++ rejected substitution score,numeric
+phyloP7way_vertebrate,PhyloP conservation score (7-way vertebrate),numeric
+phyloP20way_mammalian,PhyloP conservation score (20-way mammalian),numeric
+phastCons7way_vertebrate,PhastCons conservation score (7-way vertebrate),numeric
+phastCons20way_mammalian,PhastCons conservation score (20-way mammalian),numeric
+SiPhy_29way_logOdds,SiPhy score based on 29-way alignment,numeric
+AlphaMissense_score,AlphaMissense pathogenicity score,numeric
+AlphaMissense_pred,AlphaMissense prediction,

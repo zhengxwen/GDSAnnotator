@@ -1,3 +1,10 @@
+CHANGES IN VERSION 0.99.1
+-------------------------
+
+    o New function seqToGDS_ANNOVAR() for importing ANNOVAR-annotated VCF
+      files (from table_annovar.pl -vcfinput) into SeqArray GDS format
+
+
 CHANGES IN VERSION 0.99.0
 -------------------------
 

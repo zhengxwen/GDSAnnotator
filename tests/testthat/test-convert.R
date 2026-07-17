@@ -58,3 +58,23 @@ test_that("seqToGDS_SnpEff splits the ANN field", {
     on.exit(SeqArray::seqClose(f), add=TRUE)
     expect_gt(length(ls.gdsn(index.gdsn(f, "annotation/info/ANN.list"))), 0L)
 })
+
+test_that("seqToGDS_ANNOVAR imports VCF and removes bookkeeping nodes", {
+    out <- tempfile(fileext=".gds")
+    on.exit(unlink(out, force=TRUE))
+    seqToGDS_ANNOVAR(ex_file("example_wgs_sites_chr22_annovar.vcf.gz"), out,
+        compress="ZIP", verbose=FALSE)
+    f <- SeqArray::seqOpen(out, allow.duplicate=TRUE)
+    on.exit(SeqArray::seqClose(f), add=TRUE)
+    # ANNOVAR_DATE and ALLELE_END should be removed
+    nm <- ls.gdsn(index.gdsn(f, "annotation/info"))
+    expect_false("ANNOVAR_DATE" %in% nm)
+    expect_false("ALLELE_END" %in% nm)
+    # ANNOVAR annotation nodes should be present
+    expect_true("Func.refGeneWithVer" %in% nm)
+    expect_true("Gene.refGeneWithVer" %in% nm)
+    expect_true("gnomAD_exome_AF" %in% nm)
+    expect_true("CADD_phred" %in% nm)
+    # should have variants
+    expect_gt(.n_var(out), 0L)
+})
