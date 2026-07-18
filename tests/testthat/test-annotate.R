@@ -68,3 +68,34 @@ test_that("add_to_gds writes correctly aligned annotation values", {
         as.numeric(v$cadd), tolerance=1e-5)
     expect_true(is.na(as.numeric(written[length(written)])))  # fake variant
 })
+
+test_that("a small block size gives the same output as a single block", {
+    v <- .sample_variants(20L)
+    # append a fake variant that is not in the annotation file
+    geno <- make_geno_gds(c(v$chr, "22"), c(v$pos, 1L),
+        c(v$ref, "A"), c(v$alt, "T"))
+    on.exit(unlink(geno, force=TRUE))
+    # 'cadd_phred' is fixed-length, 'rsid' is a character variable
+    nm <- c("cadd_phred", "rsid")
+
+    get_out <- function(bsize)
+    {
+        out <- tempfile(fileext=".gds")
+        on.exit(unlink(out, force=TRUE))
+        seqAnnotateGDS(geno, favor_gds(), varnm=nm, add_to_gds=out,
+            bsize=bsize, verbose=FALSE)
+        g <- SeqArray::seqOpen(out)
+        on.exit(SeqArray::seqClose(g), add=TRUE, after=FALSE)
+        lapply(nm, function(s)
+        {
+            n <- index.gdsn(g, paste0("annotation/info/", s))
+            # the storage mode should not depend on the block size either
+            list(val=seqGetData(g, paste0("annotation/info/", s), .tolist=TRUE),
+                storage=objdesp.gdsn(n)$storage)
+        })
+    }
+
+    single <- get_out(1000000L)
+    for (bs in c(1L, 3L, 20L, 21L))
+        expect_equal(get_out(bs), single)
+})

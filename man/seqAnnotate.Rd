@@ -20,13 +20,14 @@
 \S4method{seqAnnotate}{DataFrame}(object, annot_gds, varnm, col_chr="chr",
     col_pos="pos", col_ref="ref", col_alt="alt", ..., verbose=TRUE)
 \S4method{seqAnnotate}{SeqVarGDSClass}(object, annot_gds, varnm,
-    add_to_gds=FALSE, no_sample=TRUE, root="", cleanup=FALSE, ..., verbose=TRUE)
+    add_to_gds=FALSE, no_sample=TRUE, root="", cleanup=FALSE, bsize=100000L, ...,
+    verbose=TRUE)
 \S4method{seqAnnotate}{character}(object, annot_gds, varnm, split="[-_:]", ...,
     verbose=TRUE)
 \S4method{seqAnnotate}{GRanges}(object, annot_gds, varnm, ..., verbose=TRUE)
 \S4method{seqAnnotate}{GRangesList}(object, annot_gds, varnm, ..., verbose=TRUE)
 seqAnnotateGDS(gds_fn, annot_gds, varnm, add_to_gds=FALSE, no_sample=TRUE,
-    root="", cleanup=FALSE, ..., verbose=TRUE)
+    root="", cleanup=FALSE, bsize=100000L, ..., verbose=TRUE)
 seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
 }
 \arguments{
@@ -59,6 +60,11 @@ seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
         "annotation/info" instead}
     \item{cleanup}{if \code{TRUE}, call \code{cleanup.gds} on the output
         GDS file when \code{add_to_gds} is a file name}
+    \item{bsize}{the block size, i.e., the number of variants to be written
+        to the output GDS file at a time, when \code{add_to_gds} is
+        \code{TRUE} or a file name; the annotation data are loaded and stored
+        block by block, so the memory usage does not depend on the total
+        number of variants}
     \item{split}{regular expression to split the character vector in
         \code{object} by using \code{strsplit}, using "-", "_" or ":" by
         default, e.g., "22-23413241-A-G" will be split into "22", "23413241",

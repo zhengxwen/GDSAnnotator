@@ -261,10 +261,12 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
 
 # Annotate a GDS file
 ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
-    no_sample=TRUE, root="", cleanup=FALSE, ..., verbose=TRUE)
+    no_sample=TRUE, root="", cleanup=FALSE, bsize=100000L, ..., verbose=TRUE)
 {
     # check
     stopifnot(inherits(object, "SeqVarGDSClass"))
+    stopifnot(is.numeric(bsize), length(bsize)==1L, !is.na(bsize), bsize>0L)
+    bsize <- as.double(bsize)
     stopifnot(is.logical(add_to_gds) || is.character(add_to_gds),
         length(add_to_gds)==1L, !is.na(add_to_gds))
     if (isTRUE(add_to_gds))
@@ -325,7 +327,8 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
             {
                 seqSetFilter(object, sample.sel=integer(), action="push+set",
                     verbose=FALSE)
-                on.exit(seqFilterPop(object))
+                # 'add=TRUE' to keep the handler closing 'annot_gds'
+                on.exit(seqFilterPop(object), add=TRUE, after=FALSE)
                 fmt.var <- character()
             }
             seqExport(object, add_to_gds, fmt.var=fmt.var, optimize=FALSE,
@@ -353,8 +356,36 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         file_ids <- map$file_idx
         if (!inherits(file_ids, "Rle"))
             file_ids <- Rle(as.integer(file_ids))
-        # starting offset of each run (1, rl1+1, rl1+rl2+1, ...)
-        file_vi_st <- cumsum(c(1L, runLength(file_ids)))
+        # split the variants into blocks to reduce the memory usage: a list
+        #   of n_total elements (as returned by .tolist=TRUE) needs much more
+        #   memory than the annotation data itself
+        nblock <- max(1L, as.integer(ceiling(n_total / bsize)))
+        blk_st <- as.double(seq_len(nblock) - 1L) * bsize + 1
+        blk_st <- as.integer(pmin(blk_st, n_total + 1))
+        blk_cnt <- diff(c(blk_st, n_total + 1L))
+        # get the values of the variable 'varnm[i]' for the k-th block, in
+        #   the compact list(length, data) representation
+        get_block <- function(i, k)
+        {
+            fi <- file_ids[seq.int(blk_st[k], length.out=blk_cnt[k])]  # Rle
+            vi <- map$variant_idx[seq.int(blk_st[k], length.out=blk_cnt[k])]
+            rl <- runLength(fi); rv <- runValue(fi)
+            # starting offset of each run (1, rl1+1, rl1+rl2+1, ...)
+            ost <- cumsum(c(1L, rl))
+            v <- lapply(seq_along(rv), function(j)
+            {
+                f <- annot_gds[[rv[j]]]
+                ii <- vi[seq.int(ost[j], length.out=rl[j])]
+                ii <- seqSetFilter(f, variant.sel=ii, ret.idx=TRUE,
+                    warn=FALSE, verbose=FALSE)$variant_idx
+                seqGetData(f, varnm[i], .tolist=TRUE)[ii]
+            })
+            v <- if (length(rv) == 1L) v[[1L]] else
+                unlist(v, recursive=FALSE, use.names=FALSE)
+            v <- lapply(v, function(x) unlist(x, use.names=FALSE))
+            structure(list(length=lengths(v),
+                data=unlist(v, use.names=FALSE)), class="SeqVarDataList")
+        }
         # add each annotation variable
         for (i in seq_along(varnm))
         {
@@ -363,23 +394,18 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
                 cat("    adding ", sQuote(colnm[i]), " (", tm(),
                     ") ...\n", sep="")
             }
-            v <- lapply(seq_len(nrun(file_ids)), function(j)
+            # write block by block, so that only one block is held in memory
+            #   instead of the annotation of all variants
+            gen <- function(k, i)
             {
-                f <- annot_gds[[runValue(file_ids)[j]]]
-                ii <- map$variant_idx[
-                    seq.int(file_vi_st[j], length.out=runLength(file_ids)[j])]
-                ii <- seqSetFilter(f, variant.sel=ii, ret.idx=TRUE,
-                    warn=FALSE, verbose=FALSE)$variant_idx
-                seqGetData(f, varnm[i], .tolist=TRUE)[ii]
-            })
-            if (length(v) == 1L)
-                v <- v[[1L]]
-            else
-                v <- unlist(v, recursive=FALSE, use.names=FALSE)
+                if (k > nblock) return(NULL)  # no more block
+                if (verbose && nblock>1L)
+                    .cat("        block ", k, "/", nblock, " (", tm(), ")")
+                get_block(i, k)
+            }
             if (verbose) cat("    ")
-            seqAddValue(outgds, paste0(rootnm, "/", colnm[i]), v,
-                replace=TRUE, verbose=verbose, verbose.attr=FALSE)
-            remove(v)
+            seqAddValue(outgds, paste0(rootnm, "/", colnm[i]), gen,
+                replace=TRUE, param=i, verbose=verbose, verbose.attr=FALSE)
         }
         # return
         invisible()
@@ -535,7 +561,7 @@ seqAnnotateVCF <- function(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
 
 # Annotate a GDS file with a file name input
 seqAnnotateGDS <- function(gds_fn, annot_gds, varnm, add_to_gds=FALSE,
-    no_sample=TRUE, root="", cleanup=FALSE, ..., verbose=TRUE)
+    no_sample=TRUE, root="", cleanup=FALSE, bsize=100000L, ..., verbose=TRUE)
 {
     # check
     stopifnot(is.character(gds_fn), length(gds_fn)==1L)
@@ -555,6 +581,6 @@ seqAnnotateGDS <- function(gds_fn, annot_gds, varnm, add_to_gds=FALSE,
     })
     # process
     ann_gdsfile(gds, annot_gds, varnm, add_to_gds, no_sample, root,
-        cleanup=cleanup, ..., verbose=verbose)
+        cleanup=cleanup, bsize=bsize, ..., verbose=verbose)
 }
 
