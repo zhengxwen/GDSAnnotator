@@ -4,7 +4,6 @@ import(gdsfmt)
 import(SeqArray)
 importFrom(utils, head, read.table, read.csv, flush.console, write.table, str,
     tail, type.convert, untar)
-importFrom(readr, read_csv)
 importFrom(IRanges, IRanges, which)
 importFrom(S4Vectors, nrun, DataFrame, Rle, runLength, runValue)
 importFrom(GenomicRanges, GRanges, GRangesList)

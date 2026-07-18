@@ -62,7 +62,7 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     for (i in seq_along(csv_fn))
     {
         .cat("Reading ", csv_fn[i], " ...")
-        df <- read_csv(csv_fn[i], progress=verbose, show_col_types=FALSE)
+        df <- read.csv(csv_fn[i])
         .cat("    ", nrow(df), " x ", ncol(df))
         if (!all(nm_lst %in% colnames(df)))
         {
