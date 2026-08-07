@@ -351,6 +351,20 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         # GDS nodes
         colnm <- gsub("^\\:", ".", varnm)
         varnm <- .gds_varnm(varnm)
+        # create the parent folders for the nested variable names (e.g.,
+        #   "CSQ.list/Allele" as returned by seqAnnotList()), since
+        #   seqAddValue() requires the parent node to exist
+        for (s in setdiff(unique(dirname(colnm)), "."))
+        {
+            ss <- strsplit(s, "/", fixed=TRUE)[[1L]]
+            for (j in seq_along(ss))
+            {
+                nd <- paste0(rootnm, "/",
+                    paste(ss[seq_len(j)], collapse="/"))
+                if (!exist.gdsn(outgds, nd))
+                    seqAddValue(outgds, nd, NULL, verbose=FALSE)
+            }
+        }
         n_total <- nrow(map)
         # group found variants by annotation file, map$file_idx has no NA
         file_ids <- map$file_idx
@@ -404,8 +418,13 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
                 get_block(i, k)
             }
             if (verbose) cat("    ")
-            seqAddValue(outgds, paste0(rootnm, "/", colnm[i]), gen,
-                replace=TRUE, param=i, verbose=verbose, verbose.attr=FALSE)
+            # suppress the warnings from writing the annotation data, e.g.,
+            #   "Missing characters are converted to" since NA is not allowed
+            #   in a GDS string variable
+            suppressWarnings(
+                seqAddValue(outgds, paste0(rootnm, "/", colnm[i]), gen,
+                    replace=TRUE, param=i, verbose=verbose,
+                    verbose.attr=FALSE))
         }
         # return
         invisible()

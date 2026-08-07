@@ -112,6 +112,14 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 # using block-based processing to reduce memory usage
 #
 
+# Target number of raw annotation bytes expanded in R at any one time.
+# strsplit() turns a compact character vector into a list of per-entry
+# character vectors, which costs roughly an order of magnitude more memory
+# than the source text (vector headers, element pointers and one CHARSXP per
+# distinct sub-field value). Splitting each block into sub-chunks of this
+# size caps that expansion independently of 'bsize'.
+.annot_chunk_bytes <- 8L * 1048576L  # 8 MB
+
 .split_annot_blocks <- function(f, nm_root, nm_root2, nm_lst, nm_desp,
     nm_uniform, compress, bsize, type_fn=NULL, verbose=TRUE)
 {
@@ -149,30 +157,61 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     {
         if (inherits(bk, "SeqVarDataList"))
         {
-            ss <- strsplit(bk$data, "|", fixed=TRUE)
+            dat <- bk$data
             ns <- bk$length
         } else {
-            ss <- strsplit(bk, "|", fixed=TRUE)
+            dat <- bk
             ns <- rep(1L, length(bk))
         }
-        for (i in seq_len(n_fields))
+        # Cut the block into sub-chunks of ~.annot_chunk_bytes of raw text, so
+        # that only a small part of it is expanded by strsplit() at a time.
+        # Cuts are made at variant boundaries to keep each variant's entries
+        # (and hence the index and 'uniform' selection) intact. Sizing by
+        # bytes rather than by entry count adapts to gene-dense regions where
+        # a single variant carries many long transcript annotations.
+        cs <- cumsum(ns)  # index of each variant's last entry
+        # as.double() is required below: this accumulates *bytes*, and an
+        # integer cumsum() silently yields NA past 2^31 (2.1 GB). The NAs would
+        # drop every chunk boundary after that point and collapse the rest of
+        # the block into a single huge sub-chunk -- i.e. it would fail exactly
+        # on the large blocks this chunking exists for. 'cs' above counts
+        # entries, which cannot realistically approach 2^31.
+        cw <- cumsum(as.double(nchar(dat, type="bytes", keepNA=FALSE)))[cs]
+        g <- floor(cw / .annot_chunk_bytes)
+        st <- c(1L, which(g[-1L] != g[-length(g)]) + 1L)  # first variant
+        en <- c(st[-1L] - 1L, length(ns))                 # last variant
+        for (k in seq_along(st))
         {
-            # extract sub-field i from each variant's annotation(s)
-            v <- vapply(ss, `[`, "", i=i)
-            # apply type conversion if provided
-            if (!is.null(type_fn)) v <- type_fn(nm_lst[i], v)
-            if (nm_uniform[i])
+            if (length(st) > 1L)
             {
-                # uniform: one value per variant (take first of each group)
-                idx <- cumsum(c(1L, head(ns, -1L)))
-                suppressWarnings(append.gdsn(data_nodes[[i]], v[idx]))
+                # entries of variants st[k]:en[k]
+                sub <- dat[(cs[st[k]] - ns[st[k]] + 1L):cs[en[k]]]
+                nsub <- ns[st[k]:en[k]]
             } else {
-                # variable-length: append all data and index
-                suppressWarnings(append.gdsn(data_nodes[[i]], v))
-                append.gdsn(idx_nodes[[i]], ns)
+                sub <- dat; nsub <- ns  # single chunk: avoid a copy
             }
+            ss <- strsplit(sub, "|", fixed=TRUE)
+            sub <- NULL
+            for (i in seq_len(n_fields))
+            {
+                # extract sub-field i from each variant's annotation(s)
+                v <- vapply(ss, `[`, "", i=i)
+                # apply type conversion if provided
+                if (!is.null(type_fn)) v <- type_fn(nm_lst[i], v)
+                if (nm_uniform[i])
+                {
+                    # uniform: one value per variant (take first of each group)
+                    idx <- cumsum(c(1L, head(nsub, -1L)))
+                    suppressWarnings(append.gdsn(data_nodes[[i]], v[idx]))
+                } else {
+                    # variable-length: append all data and index
+                    suppressWarnings(append.gdsn(data_nodes[[i]], v))
+                    append.gdsn(idx_nodes[[i]], nsub)
+                }
+            }
+            ss <- v <- NULL  # release before the next sub-chunk
         }
-        NULL  # return 
+        NULL  # return
     }, as.is="none", bsize=bsize, .progress=verbose)
     # finalize all nodes
     for (i in seq_len(n_fields))
