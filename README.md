@@ -85,6 +85,7 @@ https://gds-stat.s3.amazonaws.com/download/favor/Example1_FAVOR_GDS.html
 | seqToGDS_gnomAD | Convert gnomAD VCF files to GDS |
 | seqToGDS_VEP    | Convert Ensembl VEP VCF output to GDS |
 | seqToGDS_SnpEff | Convert SnpEff VCF output to GDS |
+| seqToGDS_ANNOVAR | Convert ANNOVAR output to GDS ?? |
 | seqAnnotate     | Annotate variants using the annotation stored in GDS |
 | seqAnnotList    | List the annotations stored in the GDS file |
 | seqValueCounts  | Calculate the counts of unique values |
