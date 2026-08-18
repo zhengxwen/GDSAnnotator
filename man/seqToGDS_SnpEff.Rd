@@ -6,7 +6,7 @@
 }
 \usage{
 seqToGDS_SnpEff(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root=c("ANN", "LOF", "NMD"), keep=TRUE, bsize=100000L, verbose=TRUE)
+    root=c("ANN", "LOF", "NMD"), keep=TRUE, bsize=50000L, verbose=TRUE)
 }
 \arguments{
     \item{vcf_fn}{the path(es) of VCF file from SnpEff output}

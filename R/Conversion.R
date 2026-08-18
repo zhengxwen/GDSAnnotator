@@ -303,7 +303,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 }
 
 seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root="CSQ", keep=TRUE, bsize=100000L, verbose=TRUE)
+    root="CSQ", keep=TRUE, bsize=50000L, verbose=TRUE)
 {
     # check
     stopifnot(is.character(vcf_fn), length(vcf_fn)>0L)
@@ -449,7 +449,7 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 }
 
 seqToGDS_SnpEff <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root=c("ANN", "LOF", "NMD"), keep=TRUE, bsize=100000L, verbose=TRUE)
+    root=c("ANN", "LOF", "NMD"), keep=TRUE, bsize=50000L, verbose=TRUE)
 {
     # check
     stopifnot(is.character(vcf_fn), length(vcf_fn)>0L)
