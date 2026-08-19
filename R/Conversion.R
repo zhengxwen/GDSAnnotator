@@ -292,8 +292,8 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     # split annotation into sub-fields using block processing
     .split_annot_blocks(f, nm_root, nm_root2, nm_lst, nm_desp, nm_uniform,
         compress, bsize, type_fn=.vep_type_fn, verbose=verbose)
-    # remove the original root node if keep=FALSE
-    if (isFALSE(keep))
+    # remove the original root node if keep is not TRUE
+    if (!isTRUE(keep))
     {
         delete.gdsn(index.gdsn(f, nm_root))
         if (verbose)
@@ -303,7 +303,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 }
 
 seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root="CSQ", keep=TRUE, bsize=50000L, verbose=TRUE)
+    root="CSQ", keep=FALSE, bsize=50000L, verbose=TRUE)
 {
     # check
     stopifnot(is.character(vcf_fn), length(vcf_fn)>0L)
@@ -437,8 +437,8 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         # split annotation into sub-fields using block processing
         .split_annot_blocks(f, nm_root, nm_root2, nm_lst, nm_desp,
             nm_uniform, compress, bsize, type_fn=type_fn, verbose=verbose)
-        # remove the original root node if keep=FALSE
-        if (isFALSE(keep))
+        # remove the original root node if keep is not TRUE
+        if (!isTRUE(keep))
         {
             delete.gdsn(index.gdsn(f, nm_root))
             if (verbose)
@@ -449,7 +449,7 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 }
 
 seqToGDS_SnpEff <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
-    root=c("ANN", "LOF", "NMD"), keep=TRUE, bsize=50000L, verbose=TRUE)
+    root=c("ANN", "LOF", "NMD"), keep=FALSE, bsize=50000L, verbose=TRUE)
 {
     # check
     stopifnot(is.character(vcf_fn), length(vcf_fn)>0L)
