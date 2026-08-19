@@ -133,7 +133,6 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     # pre-create empty GDS nodes for each sub-field
     nd_folder <- index.gdsn(f, nm_root2)
     data_nodes <- vector("list", n_fields)
-    idx_nodes <- vector("list", n_fields)
     for (i in seq_len(n_fields))
     {
         nm <- nm_lst[i]
@@ -145,11 +144,6 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
             storage=tp, valdim=0L, compress=compress)
         if (nzchar(nm_desp[i]))
             put.attr.gdsn(data_nodes[[i]], "Description", nm_desp[i])
-        if (!nm_uniform[i])
-        {
-            idx_nodes[[i]] <- add.gdsn(nd_folder, paste0("@", nm),
-                storage="int32", valdim=0L, compress=compress, visible=FALSE)
-        }
     }
     # block-by-block processing
     if (verbose) cat("Processing:\n")
@@ -201,24 +195,34 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
                 if (nm_uniform[i])
                 {
                     # uniform: one value per variant (take first of each group)
-                    idx <- cumsum(c(1L, head(nsub, -1L)))
-                    suppressWarnings(append.gdsn(data_nodes[[i]], v[idx]))
+                    suppressWarnings(append.gdsn(data_nodes[[i]],
+                        v[cumsum(c(1L, head(nsub, -1L)))]))
                 } else {
-                    # variable-length: append all data and index
+                    # variable-length: append all data
                     suppressWarnings(append.gdsn(data_nodes[[i]], v))
-                    append.gdsn(idx_nodes[[i]], nsub)
                 }
             }
             ss <- v <- NULL  # release before the next sub-chunk
         }
         NULL  # return
     }, as.is="none", bsize=bsize, .progress=verbose)
-    # finalize all nodes
+    # finalize all data nodes
     for (i in seq_len(n_fields))
-    {
         readmode.gdsn(data_nodes[[i]])
-        if (!nm_uniform[i])
-            readmode.gdsn(idx_nodes[[i]])
+    # The per-variant index for non-uniform fields is identical to nm_root's
+    # index node; copy it directly instead of rebuilding during the loop.
+    if (!all(nm_uniform))
+    {
+        nm_idx <- paste0(dirname(nm_root), "/@", basename(nm_root))
+        nd_idx <- index.gdsn(f, nm_idx, silent=TRUE)
+        if (!is.null(nd_idx))
+        {
+            for (i in seq_len(n_fields))
+            {
+                if (!nm_uniform[i])
+                    copyto.gdsn(nd_folder, nd_idx, paste0("@", nm_lst[i]))
+            }
+        }
     }
     # return
     invisible()
