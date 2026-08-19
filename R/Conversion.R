@@ -162,12 +162,6 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         # bytes rather than by entry count adapts to gene-dense regions where
         # a single variant carries many long transcript annotations.
         cs <- cumsum(ns)  # index of each variant's last entry
-        # as.double() is required below: this accumulates *bytes*, and an
-        # integer cumsum() silently yields NA past 2^31 (2.1 GB). The NAs would
-        # drop every chunk boundary after that point and collapse the rest of
-        # the block into a single huge sub-chunk -- i.e. it would fail exactly
-        # on the large blocks this chunking exists for. 'cs' above counts
-        # entries, which cannot realistically approach 2^31.
         cw <- cumsum(as.double(nchar(dat, type="bytes", keepNA=FALSE)))[cs]
         g <- floor(cw / .annot_chunk_bytes)
         st <- c(1L, which(g[-1L] != g[-length(g)]) + 1L)  # first variant
@@ -182,8 +176,8 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
             } else {
                 sub <- dat; nsub <- ns  # single chunk: avoid a copy
             }
-            # Record pipe positions as an integer matrix instead of
-            # strsplit(), avoiding a full copy of all field strings at once.
+            # Record pipe positions as an integer matrix instead of strsplit()
+            # avoiding a full copy of all field strings at once.
             pipe_pos <- gregexpr("|", sub, fixed=TRUE)
             nc <- nchar(sub)
             n_expect <- n_fields - 1L
