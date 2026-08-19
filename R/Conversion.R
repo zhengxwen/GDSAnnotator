@@ -112,12 +112,10 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 # using block-based processing to reduce memory usage
 #
 
-# Target number of raw annotation bytes expanded in R at any one time.
-# strsplit() turns a compact character vector into a list of per-entry
-# character vectors, which costs roughly an order of magnitude more memory
-# than the source text (vector headers, element pointers and one CHARSXP per
-# distinct sub-field value). Splitting each block into sub-chunks of this
-# size caps that expansion independently of 'bsize'.
+# Target number of raw annotation bytes processed at any one time.
+# gregexpr() + substring() avoids the full strsplit() expansion but still
+# allocates an integer boundary matrix; chunking by byte size caps the
+# working set independently of 'bsize'.
 .annot_chunk_bytes <- 8L * 1048576L  # 8 MB
 
 .split_annot_blocks <- function(f, nm_root, nm_root2, nm_lst, nm_desp,
@@ -184,25 +182,42 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
             } else {
                 sub <- dat; nsub <- ns  # single chunk: avoid a copy
             }
-            ss <- strsplit(sub, "|", fixed=TRUE)
-            sub <- NULL
+            # Record pipe positions as an integer matrix instead of
+            # strsplit(), avoiding a full copy of all field strings at once.
+            pipe_pos <- gregexpr("|", sub, fixed=TRUE)
+            nc <- nchar(sub)
+            n_expect <- n_fields - 1L
+            if (all(lengths(pipe_pos) == n_expect))
+            {
+                bnd <- cbind(0L, do.call(rbind, pipe_pos), nc + 1L)
+            } else {
+                # Pad short entries so missing fields yield ""
+                pipe_pos <- lapply(seq_along(pipe_pos), function(j) {
+                    p <- pipe_pos[[j]]
+                    if (length(p) == 1L && (is.na(p) || p == -1L))
+                        p <- integer(0L)
+                    np <- length(p)
+                    if (np >= n_expect) p[seq_len(n_expect)]
+                    else c(p, rep.int(nc[j] + 1L, n_expect - np))
+                })
+                bnd <- cbind(0L, do.call(rbind, pipe_pos), nc + 1L)
+            }
+            pipe_pos <- nc <- NULL
+            # write each field to the corresponding data node
             for (i in seq_len(n_fields))
             {
-                # extract sub-field i from each variant's annotation(s)
-                v <- vapply(ss, `[`, "", i=i)
-                # apply type conversion if provided
+                v <- substring(sub, bnd[, i] + 1L, bnd[, i + 1L] - 1L)
                 if (!is.null(type_fn)) v <- type_fn(nm_lst[i], v)
                 if (nm_uniform[i])
                 {
-                    # uniform: one value per variant (take first of each group)
                     suppressWarnings(append.gdsn(data_nodes[[i]],
                         v[cumsum(c(1L, head(nsub, -1L)))]))
                 } else {
-                    # variable-length: append all data
                     suppressWarnings(append.gdsn(data_nodes[[i]], v))
                 }
+                v <- NULL
             }
-            ss <- v <- NULL  # release before the next sub-chunk
+            bnd <- sub <- NULL  # release before the next sub-chunk
         }
         NULL  # return
     }, as.is="none", bsize=bsize, .progress=verbose)
