@@ -1,17 +1,26 @@
 CHANGES IN VERSION 0.99.1
 -------------------------
 
-    o New function seqToGDS_ANNOVAR() for importing ANNOVAR-annotated VCF
+    o New functions `seqAnnotStat()`, `seqAnnotReport()` and
+      `seqAnnotGeneTable()` for generating a VEP/SnpEff-like summary report
+      from GDS files: `seqAnnotStat()` collects all summary statistics in a
+      single pass over the file (the counters are additive, so multiple GDS
+      files, e.g., one per chromosome, can be summarized together), and
+      `seqAnnotReport()` renders them as a report in HTML (plain HTML tables
+      and inline SVG charts, no additional package is required), Markdown
+      (pipe tables) or R Markdown (the charts are drawn at knit time) format
+
+    o New function `seqToGDS_ANNOVAR()` for importing ANNOVAR-annotated VCF
       files (from table_annovar.pl -vcfinput) into SeqArray GDS format
 
-    o new 'bsize' in seqAnnotate() and seqAnnotateGDS() to split the variants
-      into blocks when 'add_to_gds' is TRUE or a file name: the annotation
-      data are loaded and written block by block, so the memory usage no
-      longer depends on the total number of variants (requiring the block
-      writing in SeqArray::seqAddValue, SeqArray_v1.53.2)
+    o new 'bsize' in `seqAnnotate()` and `seqAnnotateGDS()` to split the
+      variants into blocks when 'add_to_gds' is TRUE or a file name: the
+      annotation data are loaded and written block by block, so the memory
+      usage no longer depends on the total number of variants (requiring the
+      block writing in `SeqArray::seqAddValue()`, SeqArray_v1.53.2)
 
 
-CHANGES IN VERSION 0.99.0
+CHANGES IN VERSION 0.99.0 (March 2025)
 -------------------------
 
-    o Initial Bioconductor package submission
+    o Initial package

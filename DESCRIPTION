@@ -3,7 +3,7 @@ Type: Package
 Title: Whole-genome variant annotation data manipulation using GDS files
 Version: 0.99.1
 Date: 2026-07-17
-Depends: R (>= 4.0.0), gdsfmt (>= 1.32.0), SeqArray (>= 1.51.9)
+Depends: R (>= 4.0.0), gdsfmt (>= 1.32.0), SeqArray (>= 1.53.2)
 Imports: methods, IRanges, GenomicRanges, S4Vectors
 Suggests: Biobase, BiocGenerics, BiocStyle, testthat (>= 3.0.0), jsonlite,
         knitr, markdown, rmarkdown, SummarizedExperiment, VariantAnnotation

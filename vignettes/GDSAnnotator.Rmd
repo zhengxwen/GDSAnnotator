@@ -55,6 +55,9 @@ space-efficient when storing whole-genome annotations of FAVOR.
 | `seqAnnotList`      | List the annotations stored in a GDS file                   |
 | `seqValueCounts`    | Calculate the counts of unique annotation values            |
 | `seqUnitGroupAnnot` | Group variants based on their annotations                   |
+| `seqAnnotStat`      | Calculate the summary statistics of variants & annotations  |
+| `seqAnnotReport`    | Generate a summary report in HTML or Markdown format        |
+| `seqAnnotGeneTable` | Per-gene annotation counts, broken down by impact           |
 
 # Installation
 
@@ -240,6 +243,10 @@ unlink(out_fn, force = TRUE)
 The resulting GDS file can be inspected with `seqAnnotList()` and queried with
 `seqAnnotate()` just like the FAVOR example above.
 
+The two files converted above are also shipped with the package, as
+`example_wgs_sites_chr22_vep.gds` and `example_wgs_sites_chr22_snpeff.gds`,
+and are used in the examples that follow.
+
 # Summarising annotations
 
 ## Counting unique values
@@ -270,15 +277,106 @@ annotation fields, optionally applying filters via `cond`. This is useful
 for constructing variant-set units for downstream aggregation tests (e.g.
 rare-variant association analysis):
 
-```{r unit-group, eval = FALSE}
-gds_fn <- system.file("extdata", "example_wgs_sites_chr22_vep.gds",
+```{r unit-group}
+gds_fn <- system.file("extdata", "example_wgs_sites_chr22_snpeff.gds",
     package = "GDSAnnotator")
 
-# Group variants by VEP 'Consequence', keeping only coding consequences
-seqUnitGroupAnnot(gds_fn,
-    varnm = c("CSQ_Consequence", "CSQ_IMPACT"),
-    by    = "CSQ_IMPACT",
-    cond  = list(NULL, c("HIGH", "MODERATE")))
+# Group the variants by gene, keeping only the HIGH-impact annotations
+u <- seqUnitGroupAnnot(gds_fn,
+    varnm = c("ANN.list/Gene_Name", "ANN.list/Annotation_Impact"),
+    by    = "ANN.list/Gene_Name",
+    cond  = list(NULL, "HIGH"),
+    verbose = FALSE)
+
+length(u$index)   # the number of variant-set units
+head(u$desp)
+```
+
+## Summary report
+
+Ensembl VEP and SnpEff each write an HTML summary next to their VCF output,
+but that report is lost once the annotations have been converted to GDS ---
+and it is not available at all for a GDS file assembled from several sources.
+`seqAnnotStat()` and `seqAnnotReport()` regenerate an equivalent report
+directly from the GDS file.
+
+`seqAnnotStat()` collects every statistic in a **single pass** over the file,
+so the cost does not grow with the number of statistics reported:
+
+```{r annot-stat}
+gds_fn <- system.file("extdata", "example_wgs_sites_chr22_snpeff.gds",
+    package = "GDSAnnotator")
+
+st <- seqAnnotStat(gds_fn, verbose = FALSE)
+st
+```
+
+Each statistic in `st$counts` is a named vector of counts. Consequences are
+counted twice: once for every annotation record (one record per transcript,
+`cons_all`), and once per variant keeping only the most severe consequence
+(`cons_severe`), following the Sequence Ontology ranking used by VEP:
+
+```{r annot-stat-counts}
+st$counts$cons_severe
+
+st$counts$impact
+```
+
+`seqAnnotGeneTable()` returns the per-gene counts, the equivalent of the
+`genes.txt` file written by SnpEff:
+
+```{r annot-gene-table}
+head(seqAnnotGeneTable(st))
+```
+
+`seqAnnotReport()` renders the statistics as a report. The output format is
+taken from the file extension by default: `.md` gives GitHub-flavored
+Markdown, `.Rmd` gives R Markdown source, and anything else gives a
+self-contained HTML file that needs no JavaScript and no additional package,
+so it can be viewed offline. None of the three writes a companion image
+directory --- the report is always a single file.
+
+```{r annot-report-md}
+md_fn <- tempfile(fileext = ".md")
+seqAnnotReport(st, md_fn, title = "SnpEff annotation of chromosome 22",
+    verbose = FALSE)
+
+cat(head(readLines(md_fn), 22), sep = "\n")
+```
+
+```{r annot-report-html, eval = FALSE}
+# the same content as a self-contained HTML file
+seqAnnotReport(st, "annot_summary.html",
+    title = "SnpEff annotation of chromosome 22")
+```
+
+The HTML charts are inline SVG and the Markdown charts are drawn with block
+characters. If the charts should be real plots instead --- to restyle them,
+or to fold the report into a larger document --- the `rmd` format writes an R
+Markdown source in which the counts are embedded as R code and the charts are
+produced by `barplot()` at knit time:
+
+```{r annot-report-rmd, eval = FALSE}
+seqAnnotReport(st, "annot_summary.Rmd",
+    title = "SnpEff annotation of chromosome 22")
+
+rmarkdown::render("annot_summary.Rmd")
+```
+
+```{r annot-report-clean, include = FALSE}
+unlink(md_fn, force = TRUE)
+```
+
+The counters are additive, so a whole-genome summary can be built from
+per-chromosome GDS files without ever holding more than one of them open.
+The memory usage depends on the number of distinct categories (e.g. the
+number of genes), not on the number of variants:
+
+```{r annot-stat-merge, eval = FALSE}
+gds_fn <- sprintf("annot_chr%d.gds", 1:22)
+
+st <- seqAnnotStat(gds_fn)
+seqAnnotReport(st, "wgs_summary.html", title = "Whole-genome annotation")
 ```
 
 # Performance: compact storage and random access

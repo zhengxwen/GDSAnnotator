@@ -90,6 +90,9 @@ https://gds-stat.s3.amazonaws.com/download/favor/Example1_FAVOR_GDS.html
 | seqAnnotList    | List the annotations stored in the GDS file |
 | seqValueCounts  | Calculate the counts of unique values |
 | seqUnitGroupAnnot | Group the variants based on the variant annotation |
+| seqAnnotStat    | Calculate the summary statistics of variants and annotations |
+| seqAnnotReport  | Generate a summary report in HTML or Markdown format |
+| seqAnnotGeneTable | Per-gene annotation counts, broken down by impact |
 
 
 ## See also
