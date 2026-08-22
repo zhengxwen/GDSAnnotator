@@ -9,7 +9,8 @@ of Ensembl-VEP and SnpEff.
 \usage{
 seqAnnotReport(stat, out_fn="annot_summary.html",
     format=c("auto", "html", "markdown", "rmd"),
-    title="GDSAnnotator Summary Report", bsize=100000L, verbose=TRUE)
+    title="GDSAnnotator Summary Report", parallel=FALSE, bsize=100000L,
+    verbose=TRUE)
 }
 \arguments{
     \item{stat}{a \code{SeqAnnotStat} object returned from
@@ -17,11 +18,21 @@ seqAnnotReport(stat, out_fn="annot_summary.html",
         file name or a character vector for multiple file names, for which
         \code{\link{seqAnnotStat}} is called first}
     \item{out_fn}{the file name of the output report}
-    \item{format}{the output format; \code{"auto"} (by default) uses
-        \code{"markdown"} if the file extension of \code{out_fn} is ".md" or
-        ".markdown", \code{"rmd"} if it is ".rmd", and \code{"html"}
-        otherwise}
+    \item{format}{the output format: \code{"html"} and \code{"markdown"}
+        are finished reports, ready to be read as they are, and their charts
+        are drawn by the renderer (inline SVG in HTML, block characters in
+        Markdown); \code{"rmd"} is instead the R Markdown \emph{source} of a
+        report, in which the counts are embedded as R code and the charts are
+        drawn by \code{barplot()} only when the document is knitted, so it
+        can be edited before rendering; \code{"auto"} (by default) takes the
+        format from the file extension of \code{out_fn}: ".md" and
+        ".markdown" give \code{"markdown"}, ".Rmd" gives \code{"rmd"}, and
+        anything else gives \code{"html"} (the extension is matched
+        case-insensitively)}
     \item{title}{the title of the report}
+    \item{parallel}{the number of processes, passed to
+        \code{\link{seqAnnotStat}} if \code{stat} is not a
+        \code{SeqAnnotStat} object; see \code{\link{seqAnnotStat}}}
     \item{bsize}{block size, passed to \code{\link{seqAnnotStat}} if
         \code{stat} is not a \code{SeqAnnotStat} object}
     \item{verbose}{if \code{TRUE}, show information}

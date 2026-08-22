@@ -367,10 +367,18 @@ rmarkdown::render("annot_summary.Rmd")
 unlink(md_fn, force = TRUE)
 ```
 
-The counters are additive, so a whole-genome summary can be built from
-per-chromosome GDS files without ever holding more than one of them open.
-The memory usage depends on the number of distinct categories (e.g. the
-number of genes), not on the number of variants:
+The counters are additive, and that has two consequences. First, the variants
+can be split between processes and the per-process counters merged
+afterwards, so `parallel` gives a summary identical to the serial one:
+
+```{r annot-stat-parallel, eval = FALSE}
+st <- seqAnnotStat(gds_fn, parallel = 4L)
+```
+
+Second, a whole-genome summary can be built from per-chromosome GDS files
+without ever holding more than one of them open. The memory usage depends on
+the number of distinct categories (e.g. the number of genes), not on the
+number of variants:
 
 ```{r annot-stat-merge, eval = FALSE}
 gds_fn <- sprintf("annot_chr%d.gds", 1:22)

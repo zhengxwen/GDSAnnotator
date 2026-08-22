@@ -225,43 +225,9 @@
 # QUAL histogram breaks
 .qual_break <- c(-Inf, 0, 10, 20, 30, 40, 50, 100, 200, 500, 1000, Inf)
 
-seqAnnotStat <- function(gdsfile, bsize=100000L, verbose=TRUE)
+# the GDS nodes to be read, in one single pass
+.stat_varnm <- function(f, pf)
 {
-    # check
-    stopifnot(is.numeric(bsize), length(bsize)==1L, bsize>0L)
-    stopifnot(is.logical(verbose), length(verbose)==1L, !is.na(verbose))
-    # multiple files: calculate one by one and merge the counters
-    if (is.character(gdsfile))
-    {
-        if (length(gdsfile) == 0L)
-            stop("'gdsfile' should be a file name.")
-        if (anyNA(gdsfile))
-            stop("'gdsfile' should not contain NA.")
-        if (length(gdsfile) > 1L)
-        {
-            lst <- lapply(seq_along(gdsfile), function(i)
-            {
-                if (isTRUE(verbose))
-                    cat("[", i, "/", length(gdsfile), "] ", sep="")
-                seqAnnotStat(gdsfile[i], bsize=bsize, verbose=verbose)
-            })
-            return(Reduce(.stat_merge, lst))
-        }
-        # when length(gdsfile)==1
-        if (isTRUE(verbose))
-            .cat("Open ", sQuote(basename(gdsfile)))
-        fn <- normalizePath(gdsfile, mustWork=FALSE)
-        gdsfile <- seqOpen(gdsfile, allow.duplicate=TRUE)
-        on.exit(seqClose(gdsfile))
-    } else {
-        stopifnot(inherits(gdsfile, "SeqVarGDSClass"))
-        fn <- gdsfile$filename
-    }
-    f <- gdsfile
-
-    # the annotation source (VEP, SnpEff, or none)
-    pf <- .annot_profile(f)
-    # the GDS nodes to be read, in one single pass
     varnm <- c(chr="chromosome", pos="position", allele="allele")
     v <- c(id="annotation/id", qual="annotation/qual",
         filter="annotation/filter")
@@ -278,10 +244,14 @@ seqAnnotStat <- function(gdsfile, bsize=100000L, verbose=TRUE)
                 varnm[s] <- paste0(pf$root, "/", pf[[s]])
         }
     }
+    varnm
+}
 
-    # initialize
+# update all the counters over the selected variants, and return them as a
+# list; this is the unit of work of a single process
+.stat_core <- function(f, varnm, bsize, verbose)
+{
     e <- .acc_new()
-    n_var <- 0L
     so <- .so_table()
 
     # block-by-block processing, all the counters are updated at once
@@ -289,7 +259,7 @@ seqAnnotStat <- function(gdsfile, bsize=100000L, verbose=TRUE)
     {
         names(x) <- names(varnm)
         n <- length(x$chr)
-        n_var <<- n_var + n
+        .acc_add(e, "n_var", c(n=n))
 
         # ---- variant-level statistics
         .acc_tab(e, "chrom", x$chr)
@@ -368,6 +338,90 @@ seqAnnotStat <- function(gdsfile, bsize=100000L, verbose=TRUE)
         NULL  # return
     }, as.is="none", bsize=bsize, .progress=verbose)
 
+    # return
+    as.list(e)
+}
+
+# merge two lists of counters, as returned by .stat_core()
+.counts_merge <- function(x, y)
+{
+    if (is.null(x)) return(y)
+    if (is.null(y)) return(x)
+    e <- .acc_new()
+    for (s in union(names(x), names(y)))
+    {
+        if (s == "pos_min")
+        {
+            .acc_minmax(e, s, x[[s]], pmin)
+            .acc_minmax(e, s, y[[s]], pmin)
+        } else if (s == "pos_max")
+        {
+            .acc_minmax(e, s, x[[s]], pmax)
+            .acc_minmax(e, s, y[[s]], pmax)
+        } else {
+            .acc_add(e, s, x[[s]])
+            .acc_add(e, s, y[[s]])
+        }
+    }
+    as.list(e)
+}
+
+
+seqAnnotStat <- function(gdsfile, parallel=FALSE, bsize=100000L, verbose=TRUE)
+{
+    # check
+    stopifnot(is.numeric(bsize), length(bsize)==1L, bsize>0L)
+    stopifnot(is.logical(verbose), length(verbose)==1L, !is.na(verbose))
+    # multiple files: calculate one by one and merge the counters
+    if (is.character(gdsfile))
+    {
+        if (length(gdsfile) == 0L)
+            stop("'gdsfile' should be a file name.")
+        if (anyNA(gdsfile))
+            stop("'gdsfile' should not contain NA.")
+        if (length(gdsfile) > 1L)
+        {
+            lst <- lapply(seq_along(gdsfile), function(i)
+            {
+                if (isTRUE(verbose))
+                    cat("[", i, "/", length(gdsfile), "] ", sep="")
+                seqAnnotStat(gdsfile[i], parallel=parallel, bsize=bsize,
+                    verbose=verbose)
+            })
+            return(Reduce(.stat_merge, lst))
+        }
+        # when length(gdsfile)==1
+        if (isTRUE(verbose))
+            .cat("Open ", sQuote(basename(gdsfile)))
+        fn <- normalizePath(gdsfile, mustWork=FALSE)
+        gdsfile <- seqOpen(gdsfile, allow.duplicate=TRUE)
+        on.exit(seqClose(gdsfile))
+    } else {
+        stopifnot(inherits(gdsfile, "SeqVarGDSClass"))
+        fn <- gdsfile$filename
+    }
+    f <- gdsfile
+
+    # the annotation source (VEP, SnpEff, or none)
+    pf <- .annot_profile(f)
+    varnm <- .stat_varnm(f, pf)
+    bsize <- as.integer(bsize)
+
+    # the counters are additive, so each process works on its own subset of
+    # the variants and the results are merged by .counts_merge()
+    if (is.null(parallel) || isFALSE(parallel) || identical(parallel, 1L))
+    {
+        cnt <- .stat_core(f, varnm, bsize, verbose)
+    } else {
+        cnt <- seqParallel(parallel, f, FUN=function(f, varnm, bsize)
+            {
+                .stat_core(f, varnm, bsize, verbose=FALSE)
+            }, split="by.variant", .combine=.counts_merge,
+            varnm=varnm, bsize=bsize)
+    }
+    n_var <- if (is.null(cnt$n_var)) 0L else as.integer(cnt$n_var[[1L]])
+    cnt$n_var <- NULL
+
     # the VCF header, for the annotator version & command line
     hd <- NULL
     nd <- index.gdsn(f, "description/vcf.header", silent=TRUE)
@@ -376,7 +430,7 @@ seqAnnotStat <- function(gdsfile, bsize=100000L, verbose=TRUE)
     # output
     ans <- list(file=fn, filesize=file.size(fn), n_variant=n_var,
         source=if (is.null(pf)) "unknown" else pf$source, profile=pf,
-        header=hd, counts=as.list(e), created=Sys.time())
+        header=hd, counts=cnt, created=Sys.time())
     class(ans) <- "SeqAnnotStat"
     ans
 }
@@ -385,23 +439,7 @@ seqAnnotStat <- function(gdsfile, bsize=100000L, verbose=TRUE)
 # Merge two SeqAnnotStat objects
 .stat_merge <- function(x, y)
 {
-    e <- .acc_new()
-    for (s in union(names(x$counts), names(y$counts)))
-    {
-        if (s == "pos_min")
-        {
-            .acc_minmax(e, s, x$counts[[s]], pmin)
-            .acc_minmax(e, s, y$counts[[s]], pmin)
-        } else if (s == "pos_max")
-        {
-            .acc_minmax(e, s, x$counts[[s]], pmax)
-            .acc_minmax(e, s, y$counts[[s]], pmax)
-        } else {
-            .acc_add(e, s, x$counts[[s]])
-            .acc_add(e, s, y$counts[[s]])
-        }
-    }
-    x$counts <- as.list(e)
+    x$counts <- .counts_merge(x$counts, y$counts)
     x$n_variant <- x$n_variant + y$n_variant
     x$file <- c(x$file, y$file)
     x$filesize <- c(x$filesize, y$filesize)
@@ -1069,7 +1107,8 @@ code{background:#f4f4f4;padding:1px 4px}'
 
 seqAnnotReport <- function(stat, out_fn="annot_summary.html",
     format=c("auto", "html", "markdown", "rmd"),
-    title="GDSAnnotator Summary Report", bsize=100000L, verbose=TRUE)
+    title="GDSAnnotator Summary Report", parallel=FALSE, bsize=100000L,
+    verbose=TRUE)
 {
     # check
     stopifnot(is.character(out_fn), length(out_fn)==1L, !is.na(out_fn))
@@ -1084,7 +1123,8 @@ seqAnnotReport <- function(stat, out_fn="annot_summary.html",
     }
     # the summary statistics
     if (!inherits(stat, "SeqAnnotStat"))
-        stat <- seqAnnotStat(stat, bsize=bsize, verbose=verbose)
+        stat <- seqAnnotStat(stat, parallel=parallel, bsize=bsize,
+            verbose=verbose)
 
     # build the format-independent content, then render it
     sec <- .rep_sections(stat)

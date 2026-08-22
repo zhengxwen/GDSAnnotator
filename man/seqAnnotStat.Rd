@@ -7,12 +7,16 @@
 stored in a SeqArray GDS file, in a single pass over the file.
 }
 \usage{
-seqAnnotStat(gdsfile, bsize=100000L, verbose=TRUE)
+seqAnnotStat(gdsfile, parallel=FALSE, bsize=100000L, verbose=TRUE)
 \method{print}{SeqAnnotStat}(x, ...)
 }
 \arguments{
     \item{gdsfile}{a \code{SeqVarGDSClass} object, a GDS file name or a
         character vector for multiple file names}
+    \item{parallel}{\code{FALSE} (serial processing), \code{TRUE} (multicore
+        processing), numeric value or other value; \code{parallel} is passed
+        to the argument \code{cl} in \code{\link{seqParallel}}, see
+        \code{\link{seqParallel}} for more details}
     \item{bsize}{block size, i.e., the number of variants to be processed
         at a time}
     \item{verbose}{if \code{TRUE}, show information}
@@ -28,6 +32,11 @@ vector of multiple file names (e.g., one GDS file per chromosome), the files
 are summarized one by one and the counters are merged into a single object.
 The memory usage is proportional to the number of distinct categories (e.g.,
 the number of genes), not to the number of variants.
+
+    Since the counters are additive, \code{parallel} splits the variants
+between the processes, each process calculates its own counters, and the
+results are merged. The output does not depend on \code{parallel} or on
+\code{bsize}.
 
     The variant-level statistics (the number of variants per chromosome, the
 variant classes, the base changes and the Ts/Tv ratio, the InDel length
@@ -75,6 +84,10 @@ st$counts$impact
 
 # transitions & transversions
 st$counts$base_change
+
+# using two processes
+st2 <- seqAnnotStat(gds_fn, parallel=2L, verbose=FALSE)
+identical(st$counts, st2$counts)
 }
 
 \keyword{gds}

@@ -8,7 +8,9 @@ CHANGES IN VERSION 0.99.1
       files, e.g., one per chromosome, can be summarized together), and
       `seqAnnotReport()` renders them as a report in HTML (plain HTML tables
       and inline SVG charts, no additional package is required), Markdown
-      (pipe tables) or R Markdown (the charts are drawn at knit time) format
+      (pipe tables) or R Markdown (the charts are drawn at knit time) format;
+      'parallel' splits the variants between multiple processes, and the
+      per-process counters are merged afterwards
 
     o New function `seqToGDS_ANNOVAR()` for importing ANNOVAR-annotated VCF
       files (from table_annovar.pl -vcfinput) into SeqArray GDS format
