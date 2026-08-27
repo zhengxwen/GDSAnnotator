@@ -126,6 +126,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     if (verbose)
         .cat("    ", paste(nm_lst, collapse=","))
     n_fields <- length(nm_lst)
+    n_expect <- n_fields - 1L  # pipes per well-formed entry
     if (is.null(nm_desp)) nm_desp <- rep("", n_fields)
     if (is.null(nm_uniform)) nm_uniform <- rep(FALSE, n_fields)
     # pre-create empty GDS nodes for each sub-field
@@ -162,44 +163,83 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         # bytes rather than by entry count adapts to gene-dense regions where
         # a single variant carries many long transcript annotations.
         cs <- cumsum(ns)  # index of each variant's last entry
-        cw <- cumsum(as.double(nchar(dat, type="bytes", keepNA=FALSE)))[cs]
+        # as.double() is required here: this accumulates *bytes*, and an
+        # integer cumsum() silently yields NA past 2^31 (2.1 GB). The NAs would
+        # drop every chunk boundary after that point and collapse the rest of
+        # the block into a single huge sub-chunk -- i.e. it would fail exactly
+        # on the large blocks this chunking exists for.
+        # The leading 0 and [cs + 1L] keep the result aligned with 'ns' when a
+        # variant has no entries at all (cs == 0), as is common for SnpEff
+        # LOF/NMD; a plain [cs] drops those silently and shifts every
+        # subsequent chunk boundary.
+        cw <- c(0, cumsum(as.double(nchar(dat, type="bytes",
+            keepNA=FALSE))))[cs + 1L]
         g <- floor(cw / .annot_chunk_bytes)
         st <- c(1L, which(g[-1L] != g[-length(g)]) + 1L)  # first variant
+        # A variant with no entries must stay in the same sub-chunk as the
+        # variant that follows it: for a 'uniform' field the original code
+        # resolves it to the *next* variant's first entry, so a cut may not
+        # fall on a run of empty variants. Boundaries land on non-empty
+        # variants, so walk each one back over the preceding empty run.
+        if (length(st) > 1L)
+        {
+            d <- which(ns > 0L)
+            j <- match(st[-1L], d) - 1L
+            st <- unique(c(1L, ifelse(j >= 1L, d[pmax(j, 1L)] + 1L, 1L)))
+        }
         en <- c(st[-1L] - 1L, length(ns))                 # last variant
         for (k in seq_along(st))
         {
             if (length(st) > 1L)
             {
-                # entries of variants st[k]:en[k]
-                sub <- dat[(cs[st[k]] - ns[st[k]] + 1L):cs[en[k]]]
+                # entries of variants st[k]:en[k]; a run of variants with no
+                # entries at all gives an empty sub-chunk
+                i1 <- cs[st[k]] - ns[st[k]] + 1L
+                i2 <- cs[en[k]]
+                sub <- if (i2 >= i1) dat[i1:i2] else dat[0L]
                 nsub <- ns[st[k]:en[k]]
             } else {
                 sub <- dat; nsub <- ns  # single chunk: avoid a copy
             }
-            # Record pipe positions as an integer matrix instead of strsplit()
+            # Record pipe positions as an integer matrix instead of strsplit(),
             # avoiding a full copy of all field strings at once.
-            pipe_pos <- gregexpr("|", sub, fixed=TRUE)
-            nc <- nchar(sub)
-            n_expect <- n_fields - 1L
-            if (all(lengths(pipe_pos) == n_expect))
+            if (length(sub))
             {
-                bnd <- cbind(0L, do.call(rbind, pipe_pos), nc + 1L)
+                pipe_pos <- gregexpr("|", sub, fixed=TRUE)
+                nc <- nchar(sub)
+                np <- lengths(pipe_pos)
+                # gregexpr() reports a single -1 when there is no match at all;
+                # which() keeps this safe if an entry is NA
+                np[which(np == 1L & vapply(pipe_pos, `[`, 0L, 1L) < 0L)] <- 0L
+                # n_expect == 0 must take the slow path: with no pipes at
+                # all gregexpr() yields -1, which would become a bogus column
+                if (n_expect > 0L && all(np == n_expect))
+                {
+                    bnd <- cbind(0L, do.call(rbind, pipe_pos), nc + 1L)
+                } else {
+                    # pad short entries; for an over-long entry keep the pipe
+                    # that ends the last field, so it is cut where strsplit()
+                    # would cut it rather than running to the end of the string
+                    pipe_pos <- lapply(seq_along(pipe_pos), function(j) {
+                        p <- pipe_pos[[j]]
+                        if (np[j] >= n_fields) p[seq_len(n_fields)]
+                        else c(p[seq_len(np[j])],
+                            rep.int(nc[j] + 1L, n_fields - np[j]))
+                    })
+                    bnd <- cbind(0L, do.call(rbind, pipe_pos))
+                }
             } else {
-                # Pad short entries so missing fields yield ""
-                pipe_pos <- lapply(seq_along(pipe_pos), function(j) {
-                    p <- pipe_pos[[j]]
-                    if (length(p) == 1L && (is.na(p) || p == -1L))
-                        p <- integer(0L)
-                    np <- length(p)
-                    if (np >= n_expect) p[seq_len(n_expect)]
-                    else c(p, rep.int(nc[j] + 1L, n_expect - np))
-                })
-                bnd <- cbind(0L, do.call(rbind, pipe_pos), nc + 1L)
+                # no entries in this sub-chunk at all
+                bnd <- matrix(0L, 0L, n_fields + 1L)
             }
-            pipe_pos <- nc <- NULL
+            pipe_pos <- nc <- np <- NULL
             # write each field to the corresponding data node
             for (i in seq_len(n_fields))
             {
+                # A field missing from an entry (a trailing '|', or fewer
+                # fields than the header declares) yields "". NOTE: this is a
+                # deliberate departure from strsplit(), which would give NA.
+                # An entry that is itself NA still yields NA.
                 v <- substring(sub, bnd[, i] + 1L, bnd[, i + 1L] - 1L)
                 if (!is.null(type_fn)) v <- type_fn(nm_lst[i], v)
                 if (nm_uniform[i])
