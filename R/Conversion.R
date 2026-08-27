@@ -119,7 +119,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 .annot_chunk_bytes <- 8L * 1048576L  # 8 MB
 
 .split_annot_blocks <- function(f, nm_root, nm_root2, nm_lst, nm_desp,
-    nm_uniform, compress, bsize, type_fn=NULL, verbose=TRUE)
+    nm_uniform, compress, bsize, type_fn=NULL, paren=FALSE, verbose=TRUE)
 {
     # create output folder
     seqAddValue(f, nm_root2, NULL, verbose=verbose)
@@ -211,11 +211,22 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
                 # gregexpr() reports a single -1 when there is no match at all;
                 # which() keeps this safe if an entry is NA
                 np[which(np == 1L & vapply(pipe_pos, `[`, 0L, 1L) < 0L)] <- 0L
+                if (paren)
+                {
+                    # SnpEff wraps each LOF/NMD entry in parentheses, which are
+                    # not part of the first and last field. Skip them by moving
+                    # the outer boundaries instead of rewriting the strings, and
+                    # test each entry so data without them is left alone.
+                    lo <- as.integer(startsWith(sub, "("))
+                    hi <- nc - as.integer(endsWith(sub, ")"))
+                } else {
+                    lo <- 0L; hi <- nc
+                }
                 # n_expect == 0 must take the slow path: with no pipes at
                 # all gregexpr() yields -1, which would become a bogus column
                 if (n_expect > 0L && all(np == n_expect))
                 {
-                    bnd <- cbind(0L, do.call(rbind, pipe_pos), nc + 1L)
+                    bnd <- cbind(lo, do.call(rbind, pipe_pos), hi + 1L)
                 } else {
                     # pad short entries; for an over-long entry keep the pipe
                     # that ends the last field, so it is cut where strsplit()
@@ -224,9 +235,9 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
                         p <- pipe_pos[[j]]
                         if (np[j] >= n_fields) p[seq_len(n_fields)]
                         else c(p[seq_len(np[j])],
-                            rep.int(nc[j] + 1L, n_fields - np[j]))
+                            rep.int(hi[j] + 1L, n_fields - np[j]))
                     })
-                    bnd <- cbind(0L, do.call(rbind, pipe_pos))
+                    bnd <- cbind(lo, do.call(rbind, pipe_pos))
                 }
             } else {
                 # no entries in this sub-chunk at all
@@ -489,7 +500,8 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
             type_fn <- .snpeff_type_fn
         # split annotation into sub-fields using block processing
         .split_annot_blocks(f, nm_root, nm_root2, nm_lst, nm_desp,
-            nm_uniform, compress, bsize, type_fn=type_fn, verbose=verbose)
+            nm_uniform, compress, bsize, type_fn=type_fn,
+            paren=(root %in% c("LOF", "NMD")), verbose=verbose)
         # remove the original root node if keep is not TRUE
         if (!isTRUE(keep))
         {
