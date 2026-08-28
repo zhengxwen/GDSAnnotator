@@ -265,7 +265,11 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
             bnd <- sub <- NULL  # release before the next sub-chunk
         }
         NULL  # return
-    }, as.is="none", bsize=bsize, .progress=verbose)
+        # .padNA=FALSE: without it, a field whose variants never carry more
+        # than one entry (e.g. SnpEff NMD) comes back padded to one value per
+        # variant with NA for the absent ones, so the sub-fields would get
+        # more entries than nm_root's index node accounts for.
+    }, as.is="none", bsize=bsize, .padNA=FALSE, .progress=verbose)
     # finalize all data nodes
     for (i in seq_len(n_fields))
         readmode.gdsn(data_nodes[[i]])
