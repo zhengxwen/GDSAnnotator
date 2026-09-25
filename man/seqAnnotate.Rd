@@ -27,7 +27,7 @@
 \S4method{seqAnnotate}{GRanges}(object, annot_gds, varnm, ..., verbose=TRUE)
 \S4method{seqAnnotate}{GRangesList}(object, annot_gds, varnm, ..., verbose=TRUE)
 seqAnnotateGDS(gds_fn, annot_gds, varnm, add_to_gds=FALSE, no_sample=TRUE,
-    root="", cleanup=FALSE, bsize=1000000L, ..., verbose=TRUE)
+    root="", cleanup=TRUE, bsize=1000000L, ..., verbose=TRUE)
 seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
 }
 \arguments{

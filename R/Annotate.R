@@ -598,26 +598,26 @@ seqAnnotateVCF <- function(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
 
 # Annotate a GDS file with a file name input
 seqAnnotateGDS <- function(gds_fn, annot_gds, varnm, add_to_gds=FALSE,
-    no_sample=TRUE, root="", cleanup=FALSE, bsize=1000000L, ..., verbose=TRUE)
+    no_sample=TRUE, root="", cleanup=TRUE, bsize=1000000L, ..., verbose=TRUE)
 {
     # check
     stopifnot(is.character(gds_fn), length(gds_fn)==1L)
     if (isTRUE(verbose))
         cat("Open", sQuote(gds_fn))
     gds <- seqOpen(gds_fn, readonly=!isTRUE(add_to_gds))
+    on.exit(seqClose(gds))
     if (isTRUE(verbose))
     {
         dm <- seqSummary(gds, "genotype", verbose=FALSE)$dim
         cat(" [", prettyNum(dm[3L], big.mark=",", scientific=FALSE),
             " variants]\n", sep="")
     }
-    on.exit({
-        seqClose(gds)
-        if (isTRUE(add_to_gds) && isTRUE(cleanup))
-            cleanup.gds(gds_fn, verbose=verbose)
-    })
+    if (isTRUE(add_to_gds) && isTRUE(cleanup))
+    {
+        on.exit(cleanup.gds(gds_fn, verbose=verbose), add=TRUE)
+    }
+
     # process
     ann_gdsfile(gds, annot_gds, varnm, add_to_gds, no_sample, root,
         cleanup=cleanup, bsize=bsize, ..., verbose=verbose)
 }
-
