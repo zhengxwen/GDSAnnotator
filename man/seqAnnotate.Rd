@@ -20,14 +20,14 @@
 \S4method{seqAnnotate}{DataFrame}(object, annot_gds, varnm, col_chr="chr",
     col_pos="pos", col_ref="ref", col_alt="alt", ..., verbose=TRUE)
 \S4method{seqAnnotate}{SeqVarGDSClass}(object, annot_gds, varnm,
-    add_to_gds=FALSE, no_sample=TRUE, root="", cleanup=FALSE, bsize=100000L, ...,
+    add_to_gds=FALSE, no_sample=TRUE, root="", cleanup=FALSE, bsize=1000000L, ...,
     verbose=TRUE)
 \S4method{seqAnnotate}{character}(object, annot_gds, varnm, split="[-_:]", ...,
     verbose=TRUE)
 \S4method{seqAnnotate}{GRanges}(object, annot_gds, varnm, ..., verbose=TRUE)
 \S4method{seqAnnotate}{GRangesList}(object, annot_gds, varnm, ..., verbose=TRUE)
 seqAnnotateGDS(gds_fn, annot_gds, varnm, add_to_gds=FALSE, no_sample=TRUE,
-    root="", cleanup=FALSE, bsize=100000L, ..., verbose=TRUE)
+    root="", cleanup=FALSE, bsize=1000000L, ..., verbose=TRUE)
 seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
 }
 \arguments{

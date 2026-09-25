@@ -197,6 +197,16 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
         gds_ii <- which(names(gds_idx) == ch)
         # indices for this chromosome
         idx <- which(chr == ch)
+        if (!length(gds_ii))
+        {
+            d <- ann_pos_allele(annot_gds[[1L]], ch, pos[idx], ref[idx],
+                alt[idx], varnm, verbose=FALSE)
+            if (!length(varnm)) d$file_idx <- Rle(1L, nrow(d))
+            d$..idx <- idx
+            d$..no <- NULL
+            ans[[i]] <- d
+            next
+        }
         # process each GDS file for this chromosome
         v <- lapply(seq_along(gds_ii), function(j)
         {
@@ -261,7 +271,7 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
 
 # Annotate a GDS file
 ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
-    no_sample=TRUE, root="", cleanup=FALSE, bsize=100000L, ..., verbose=TRUE)
+    no_sample=TRUE, root="", cleanup=FALSE, bsize=1000000L, ..., verbose=TRUE)
 {
     # check
     stopifnot(inherits(object, "SeqVarGDSClass"))
@@ -377,6 +387,9 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         blk_st <- as.double(seq_len(nblock) - 1L) * bsize + 1
         blk_st <- as.integer(pmin(blk_st, n_total + 1))
         blk_cnt <- diff(c(blk_st, n_total + 1L))
+        dot_block <- if (nblock > 1L)
+            unique(as.integer(round(seq(1L, nblock,
+                length.out=min(10L, nblock))))) else integer()
         # get the values of the variable 'varnm[i]' for the k-th block, in
         #   the compact list(length, data) representation
         get_block <- function(i, k)
@@ -406,18 +419,16 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
             if (verbose)
             {
                 cat("    adding ", sQuote(colnm[i]), " (", tm(),
-                    ") ...\n", sep="")
+                    ")\n    ", sep="")
             }
             # write block by block, so that only one block is held in memory
             #   instead of the annotation of all variants
             gen <- function(k, i)
             {
                 if (k > nblock) return(NULL)  # no more block
-                if (verbose && nblock>1L)
-                    .cat("        block ", k, "/", nblock, " (", tm(), ")")
+                if (verbose && (k %in% dot_block)) cat(".")
                 get_block(i, k)
             }
-            if (verbose) cat("    ")
             # suppress the warnings from writing the annotation data, e.g.,
             #   "Missing characters are converted to" since NA is not allowed
             #   in a GDS string variable
@@ -587,7 +598,7 @@ seqAnnotateVCF <- function(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
 
 # Annotate a GDS file with a file name input
 seqAnnotateGDS <- function(gds_fn, annot_gds, varnm, add_to_gds=FALSE,
-    no_sample=TRUE, root="", cleanup=FALSE, bsize=100000L, ..., verbose=TRUE)
+    no_sample=TRUE, root="", cleanup=FALSE, bsize=1000000L, ..., verbose=TRUE)
 {
     # check
     stopifnot(is.character(gds_fn), length(gds_fn)==1L)
