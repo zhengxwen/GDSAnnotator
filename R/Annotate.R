@@ -418,8 +418,8 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         {
             if (verbose)
             {
-                cat("    adding ", sQuote(colnm[i]), " (", tm(),
-                    ")\n    ", sep="")
+                cat("    adding ", i, "/", length(varnm), " ",
+                    sQuote(colnm[i]), " (", tm(), ")\n    ", sep="")
             }
             # write block by block, so that only one block is held in memory
             #   instead of the annotation of all variants
