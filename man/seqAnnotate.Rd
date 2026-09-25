@@ -60,11 +60,11 @@ seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
         "annotation/info" instead}
     \item{cleanup}{if \code{TRUE}, call \code{cleanup.gds} on the output
         GDS file when \code{add_to_gds} is a file name}
-    \item{bsize}{the block size, i.e., the number of variants to be written
-        to the output GDS file at a time, when \code{add_to_gds} is
-        \code{TRUE} or a file name; the annotation data are loaded and stored
-        block by block, so the memory usage does not depend on the total
-        number of variants}
+    \item{bsize}{the block size, i.e., the number of variants to be mapped
+        and written to the output GDS file at a time, when \code{add_to_gds}
+        is \code{TRUE} or a file name; for in-place annotation, both variant
+        matching and annotation data are processed block by block, so memory
+        usage does not depend on the total number of variants}
     \item{split}{regular expression to split the character vector in
         \code{object} by using \code{strsplit}, using "-", "_" or ":" by
         default, e.g., "22-23413241-A-G" will be split into "22", "23413241",
