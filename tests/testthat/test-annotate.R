@@ -42,6 +42,26 @@ test_that("seqAnnotate matches across character, data.frame and GRanges", {
         tolerance=1e-5)
 })
 
+test_that("seqAnnotateVCF matches exact alleles in a sites-only VCF", {
+    skip_if_not_installed("VariantAnnotation")
+    skip_if_not_installed("SummarizedExperiment")
+    v <- .sample_variants(1L)
+    vcf <- tempfile(fileext=".vcf")
+    on.exit(unlink(vcf, force=TRUE))
+    hdr <- c("##fileformat=VCFv4.2", "##contig=<ID=22>",
+        "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO")
+    row <- sprintf("%s\t%d\t.\t%s\t%s\t.\tPASS\t.",
+        v$chr, v$pos, v$ref, v$alt)
+    writeLines(c(hdr, row), vcf)
+
+    res <- seqAnnotateVCF(vcf, favor_gds(), varnm="cadd_phred",
+        verbose=FALSE)
+
+    expect_equal(nrow(res), 1L)
+    expect_equal(as.numeric(res[["cadd_phred"]]), as.numeric(v$cadd),
+        tolerance=1e-5)
+})
+
 test_that("a variant absent from the file yields NA", {
     res <- seqAnnotate("22-1-A-T", favor_gds(), varnm="cadd_phred",
         verbose=FALSE)

@@ -573,8 +573,15 @@ seqAnnotateVCF <- function(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
     if (isTRUE(verbose)) .cat("Open ", sQuote(vcf_fn))
     vcf <- VariantAnnotation::readVcf(vcf_fn)
     gr <- SummarizedExperiment::rowRanges(vcf)
+    fixed <- S4Vectors::mcols(gr)
+    nalt <- lengths(fixed$ALT)
+    variants <- DataFrame(
+        chr=rep(as.character(GenomicRanges::seqnames(gr)), nalt),
+        pos=rep(IRanges::start(gr), nalt),
+        ref=rep(as.character(fixed$REF), nalt),
+        alt=as.character(unlist(fixed$ALT, use.names=FALSE)))
     # output
-    seqAnnotate(gr, annot_gds, varnm, ..., verbose=verbose)
+    seqAnnotate(variants, annot_gds, varnm, ..., verbose=verbose)
 }
 
 
