@@ -43,10 +43,14 @@ PMID: 22728672.
 vcf_fn <- system.file("extdata", "example_wgs_sites_chr22_snpeff.vcf.gz",
     package="GDSAnnotator")
 
-seqToGDS_SnpEff(vcf_fn, "tmp.gds")
+out_fn <- tempfile(fileext=".gds")
+seqToGDS_SnpEff(vcf_fn, out_fn)
+
+# list the annotations in the output file
+seqAnnotList(out_fn)
 
 # delete the temporary file
-unlink("tmp.gds", force=TRUE)
+unlink(out_fn, force=TRUE)
 }
 
 \keyword{gds}

@@ -9,12 +9,17 @@ GDSAnnotator: Whole-genome variant annotation data manipulation using GDS files
 
 Variant annotation is a critical step in genomic data analysis, facilitating the interpretation of genetic variations and their potential biological significance. As large-scale whole-genome sequencing studies continue to expand, efficient storage, retrieval, and manipulation of variant annotation data have become increasingly important. The Genomic Data Structure ([GDS](https://www.bioconductor.org/packages/SeqArray/)) file format offers a scalable and storage-efficient solution for large genomic datasets, enabling rapid access and computational efficiency.
 
-GDSAnnotator is an R package designed for fast and memory-efficient annotation of variants stored in GDS files. It integrates seamlessly into Bioconductor tools, and utilizes external data resources, e.g, Ensembl Variant Effect Predictor ([VEP](https://useast.ensembl.org/info/docs/tools/vep/index.html)) and FAVOR ([Functional Annotation of Variants Online Resource](https://favor.genohub.org)), to provide comprehensive functional annotations, including predicted variant effects and functional characteristics of non-coding variants. Compared to a plain text file, GDS format is 30-40 times more space-efficient when storing whole-genome annotations of FAVOR.
+GDSAnnotator is an R package designed for fast and memory-efficient annotation of variants stored in GDS files. It integrates seamlessly into Bioconductor tools, and utilizes external data resources, e.g., Ensembl Variant Effect Predictor ([VEP](https://useast.ensembl.org/info/docs/tools/vep/index.html)), [SnpEff](https://pcingola.github.io/SnpEff/), [ANNOVAR](https://annovar.openbioinformatics.org/), [gnomAD](https://gnomad.broadinstitute.org/) and FAVOR ([Functional Annotation of Variants Online Resource](https://favor.genohub.org)), to provide comprehensive functional annotations, including predicted variant effects and functional characteristics of non-coding variants. Compared to a plain text file, GDS format is 30-40 times more space-efficient when storing whole-genome annotations of FAVOR.
 
 
 ## Bioconductor
 
-Coming soon.
+Coming soon (the package is being prepared for submission). Once it is available:
+```R
+if (!requireNamespace("BiocManager", quietly=TRUE))
+    install.packages("BiocManager")
+BiocManager::install("GDSAnnotator")
+```
 
 
 ## Installation
@@ -24,7 +29,10 @@ Coming soon.
 library(remotes)
 install_github("zhengxwen/GDSAnnotator")
 ```
-The `install_github()` approach requires that you build from source, i.e. `make` and compilers must be installed on your system -- see the [R FAQ](https://cran.r-project.org/faqs.html) for your operating system; you may also need to install dependencies manually.
+`install_github()` builds the package from source (no compiler is needed, the package contains R code only). The Bioconductor dependencies should be installed first:
+```R
+BiocManager::install(c("gdsfmt", "SeqArray", "GenomicRanges", "VariantAnnotation"))
+```
 
 
 
@@ -85,13 +93,14 @@ https://gds-stat.s3.amazonaws.com/download/favor/Example1_FAVOR_GDS.html
 | seqToGDS_gnomAD | Convert gnomAD VCF files to GDS |
 | seqToGDS_VEP    | Convert Ensembl VEP VCF output to GDS |
 | seqToGDS_SnpEff | Convert SnpEff VCF output to GDS |
-| seqToGDS_ANNOVAR | Convert ANNOVAR output to GDS ?? |
+| seqToGDS_ANNOVAR | Convert ANNOVAR-annotated VCF files to GDS |
 | seqAnnotate     | Annotate variants using the annotation stored in GDS |
+| seqAnnotateVCF  | Annotate the variants of a VCF file |
+| seqAnnotateGDS  | Annotate the variants of a SeqArray GDS file |
 | seqAnnotList    | List the annotations stored in the GDS file |
 | seqValueCounts  | Calculate the counts of unique values |
-| seqUnitGroupAnnot | Group the variants based on the variant annotation |
 | seqAnnotStat    | Calculate the summary statistics of variants and annotations |
-| seqAnnotReport  | Generate a summary report in HTML or Markdown format |
+| seqAnnotReport  | Generate a summary report in HTML, Markdown or R Markdown format |
 | seqAnnotGeneTable | Per-gene annotation counts, broken down by impact |
 
 

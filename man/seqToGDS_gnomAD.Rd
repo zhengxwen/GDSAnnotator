@@ -34,10 +34,14 @@ PMID: 38057664
 vcf_fn <- system.file("extdata", "gnomad.genomes.v4.chr22_sub.vcf.gz",
     package="GDSAnnotator")
 
-seqToGDS_gnomAD(vcf_fn, "tmp.gds")
+out_fn <- tempfile(fileext=".gds")
+seqToGDS_gnomAD(vcf_fn, out_fn)
+
+# list the annotations in the output file
+seqAnnotList(out_fn)
 
 # delete the temporary file
-unlink("tmp.gds", force=TRUE)
+unlink(out_fn, force=TRUE)
 }
 
 \keyword{gds}

@@ -334,7 +334,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     attr(verbose, "header_no_time") <- TRUE
     seqVCF2GDS(vcf_fn, out_fn, storage.option=compress, optimize=FALSE,
         verbose=verbose)
-    # split CSQ (Consequence annotations from Ensembl VEP)    
+    # split CSQ (Consequence annotations from Ensembl VEP)
     f <- seqOpen(out_fn, readonly=FALSE)
     on.exit(seqClose(f))
     # need CSQ
@@ -468,7 +468,7 @@ seqToGDS_VEP <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     attr(verbose, "header_no_time") <- TRUE
     seqVCF2GDS(vcf_fn, out_fn, storage.option=compress, optimize=FALSE,
         verbose=verbose)
-    # split CSQ (Consequence annotations from Ensembl VEP)    
+    # split CSQ (Consequence annotations from Ensembl VEP)
     f <- seqOpen(out_fn, readonly=FALSE)
     on.exit(seqClose(f))
     # for ANN, LOF & NMD

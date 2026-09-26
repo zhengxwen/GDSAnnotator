@@ -25,6 +25,10 @@
     if (!length(tab)) return(invisible())
     tab <- tab[!is.na(names(tab))]
     if (!length(tab)) return(invisible())
+    # always a plain named numeric vector, whatever the input (e.g., 'table')
+    nm <- names(tab)
+    tab <- as.double(tab)
+    names(tab) <- nm
     old <- e[[key]]
     if (is.null(old))
     {
@@ -199,12 +203,16 @@
     cls[nr==na & nr>1L] <- "substitution (MNV)"
     cls[nr < na] <- "insertion"
     cls[nr > na] <- "deletion"
-    cls[startsWith(alt, "<") | alt=="*" | grepl("[^ACGTNacgtn]", alt)] <- "other"
+    cls[startsWith(alt, "<") | alt=="*" |
+        grepl("[^ACGTNacgtn]", alt)] <- "other"
     .acc_tab(e, "var_class", cls)
     # base changes (SNVs only)
     i <- which(cls == "SNV")
     if (length(i))
-        .acc_tab(e, "base_change", paste0(toupper(ref[i]), ">", toupper(alt[i])))
+    {
+        .acc_tab(e, "base_change",
+            paste0(toupper(ref[i]), ">", toupper(alt[i])))
+    }
     # InDel length, truncated at +/- 20bp
     i <- which(cls=="insertion" | cls=="deletion")
     if (length(i))
@@ -330,7 +338,8 @@
         if (!is.null(x$gene))
         {
             g <- x$gene$data
-            im <- if (!is.null(x$impact)) x$impact$data else rep.int("", length(g))
+            im <- if (!is.null(x$impact)) x$impact$data else
+                rep.int("", length(g))
             i <- !is.na(g) & nzchar(g)
             if (any(i))
                 .acc_tab(e, "gene_impact", paste0(g[i], "\r", im[i]))
@@ -340,6 +349,41 @@
 
     # return
     as.list(e)
+}
+
+# the order of the counters in the output list
+.counts_order <- c("chrom", "pos_min", "pos_max", "n_allele", "var_class",
+    "base_change", "indel_len", "known", "filter", "qual", "qual_na",
+    "n_annot", "cons_all", "cons_severe", "impact", "impact_severe", "region",
+    "func_class", "biotype", "feature_type", "feature", "sift", "polyphen",
+    "errors", "gene_impact")
+
+# sort the counters and the categories of each counter, so that the output
+#   does not depend on 'parallel' or 'bsize' (the accumulator is an
+#   environment, and the categories would otherwise be in the order in which
+#   they are first seen)
+.counts_sort <- function(cnt)
+{
+    nm <- names(cnt)
+    cnt <- cnt[order(match(nm, .counts_order, nomatch=length(.counts_order)+1L),
+        nm)]
+    impact_lv <- names(.impact_color)
+    qual_lv <- levels(cut(numeric(), .qual_break))
+    for (s in names(cnt))
+    {
+        v <- cnt[[s]]
+        nm <- names(v)
+        if (is.null(nm) || length(v) < 2L) next
+        i <- switch(s,
+            chrom = , pos_min = , pos_max = .chrom_order(nm),
+            qual = order(match(nm, qual_lv)),
+            n_allele = , indel_len = order(as.integer(nm)),
+            impact = , impact_severe = order(
+                match(nm, impact_lv, nomatch=length(impact_lv)+1L), nm),
+            order(nm))
+        cnt[[s]] <- v[i]
+    }
+    cnt
 }
 
 # merge two lists of counters, as returned by .stat_core()
@@ -421,6 +465,7 @@ seqAnnotStat <- function(gdsfile, parallel=FALSE, bsize=100000L, verbose=TRUE)
     }
     n_var <- if (is.null(cnt$n_var)) 0L else as.integer(cnt$n_var[[1L]])
     cnt$n_var <- NULL
+    cnt <- .counts_sort(cnt)
 
     # the VCF header, for the annotator version & command line
     hd <- NULL
@@ -439,7 +484,7 @@ seqAnnotStat <- function(gdsfile, parallel=FALSE, bsize=100000L, verbose=TRUE)
 # Merge two SeqAnnotStat objects
 .stat_merge <- function(x, y)
 {
-    x$counts <- .counts_merge(x$counts, y$counts)
+    x$counts <- .counts_sort(.counts_merge(x$counts, y$counts))
     x$n_variant <- x$n_variant + y$n_variant
     x$file <- c(x$file, y$file)
     x$filesize <- c(x$filesize, y$filesize)
@@ -628,7 +673,8 @@ seqAnnotGeneTable <- function(stat)
         if (all(c("MISSENSE", "SILENT") %in% names(v)))
         {
             it <- c(it, list(.item("note", text=sprintf(
-                "Missense / Silent ratio = %.4f", v[["MISSENSE"]]/v[["SILENT"]]),
+                "Missense / Silent ratio = %.4f",
+                v[["MISSENSE"]]/v[["SILENT"]]),
                 bold=TRUE)))
         }
         sec[[length(sec)+1L]] <- list(title="Effects by functional class",
@@ -766,7 +812,8 @@ seqAnnotGeneTable <- function(stat)
     tot <- sum(tab)
     paste0('<table><tr>', paste0('<th>', colnm, '</th>', collapse=""),
         '</tr>', paste0(sprintf(
-            '<tr><td>%s</td><td class="n">%s</td><td class="n">%.2f%%</td></tr>',
+            paste0('<tr><td>%s</td><td class="n">%s</td>',
+                '<td class="n">%.2f%%</td></tr>'),
             .esc(names(tab)), .fmt(tab), 100*tab/tot), collapse=""),
         '</table>')
 }
@@ -787,11 +834,13 @@ seqAnnotGeneTable <- function(stat)
     cell <- function(i, j)
     {
         if (i == j) return('<td class="diag">-</td>')
-        sprintf('<td class="n" style="background:rgba(74,118,184,%.2f)">%s</td>',
+        sprintf(paste0('<td class="n" ',
+            'style="background:rgba(74,118,184,%.2f)">%s</td>'),
             if (mx>0) 0.75*m[i,j]/mx else 0, .fmt(m[i,j]))
     }
     rows <- vapply(b, function(i) paste0('<tr><th>', i, '</th>',
-        paste0(vapply(b, function(j) cell(i, j), ""), collapse=""), '</tr>'), "")
+        paste0(vapply(b, function(j) cell(i, j), ""), collapse=""),
+        '</tr>'), "")
     paste0('<table><tr><th>REF \\ ALT</th>',
         paste0('<th>', b, '</th>', collapse=""), '</tr>',
         paste(rows, collapse=""), '</table>',
@@ -869,7 +918,8 @@ code{background:#f4f4f4;padding:1px 4px}'
 .md_table <- function(colnm, ...)
 {
     col <- list(...)
-    s <- vapply(col, function(z) paste0("| ", z, " "), character(length(col[[1L]])))
+    s <- vapply(col, function(z) paste0("| ", z, " "),
+        character(length(col[[1L]])))
     if (!is.matrix(s)) s <- matrix(s, nrow=1L)
     c(paste0("| ", paste(colnm, collapse=" | "), " |"),
         paste0("|", paste(rep(" --- ", length(colnm)), collapse="|"), "|"),

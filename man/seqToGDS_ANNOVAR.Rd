@@ -60,10 +60,14 @@ variants from high-throughput sequencing data. Nucleic Acids Research,
 vcf_fn <- system.file("extdata", "example_wgs_sites_chr22_annovar.vcf.gz",
     package="GDSAnnotator")
 
-seqToGDS_ANNOVAR(vcf_fn, "tmp.gds")
+out_fn <- tempfile(fileext=".gds")
+seqToGDS_ANNOVAR(vcf_fn, out_fn)
+
+# list the annotations in the output file
+seqAnnotList(out_fn)
 
 # delete the temporary file
-unlink("tmp.gds", force=TRUE)
+unlink(out_fn, force=TRUE)
 }
 
 \keyword{gds}

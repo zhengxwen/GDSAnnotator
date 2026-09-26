@@ -35,8 +35,11 @@ the number of genes), not to the number of variants.
 
     Since the counters are additive, \code{parallel} splits the variants
 between the processes, each process calculates its own counters, and the
-results are merged. The output does not depend on \code{parallel} or on
-\code{bsize}.
+results are merged. Each counter is a named numeric vector, and its
+categories are stored in a fixed order (e.g., the chromosomes in numerical
+order, the impact categories from HIGH to MODIFIER, and the other categories
+in alphabetical order), so that the output does not depend on
+\code{parallel} or on \code{bsize}.
 
     The variant-level statistics (the number of variants per chromosome, the
 variant classes, the base changes and the Ts/Tv ratio, the InDel length
@@ -59,8 +62,8 @@ transcript), and once per variant using only the most severe consequence.
     Returns an object of class \code{SeqAnnotStat}, a list with the
 components: \code{file}, \code{filesize}, \code{n_variant}, \code{source}
 (the annotator), \code{profile} (the annotation sub-fields in use),
-\code{header} (the VCF header), \code{counts} (a list of named count
-vectors) and \code{created}.
+\code{header} (the VCF header), \code{counts} (a list of named numeric
+vectors of counts) and \code{created}.
 }
 
 \author{Xiuwen Zheng}
@@ -85,7 +88,7 @@ st$counts$impact
 # transitions & transversions
 st$counts$base_change
 
-# using two processes
+# using two processes: the counters are additive, so the result is the same
 st2 <- seqAnnotStat(gds_fn, parallel=2L, verbose=FALSE)
 identical(st$counts, st2$counts)
 }

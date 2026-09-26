@@ -7,30 +7,23 @@ test_that("seqValueCounts tabulates a categorical INFO field", {
     expect_gt(sum(tab), 0L)
 })
 
-test_that("seqUnitGroupAnnot works on a scalar field via a cond function", {
-    unit <- seqUnitGroupAnnot(favor_gds(), varnm="cadd_phred",
-        cond=list(function(x) ifelse(x >= 10, "damaging", "tolerated")),
+test_that("per_variant=TRUE counts each (variant, value) pair once", {
+    gds <- ex_file("example_wgs_sites_chr22_snpeff.gds")
+    a <- seqValueCounts(gds, "ANN.list/Annotation_Impact", verbose=FALSE)
+    b <- seqValueCounts(gds, "ANN.list/Annotation_Impact", per_variant=TRUE,
         verbose=FALSE)
-    expect_s3_class(unit, "SeqUnitListClass")
-    expect_true(all(c("desp","index") %in% names(unit)))
-    expect_true(all(c("chr","start","end") %in% names(unit$desp)))
-    expect_setequal(unit$desp[[1]], c("damaging","tolerated"))
-    # the group sizes must account for every annotated variant
-    expect_gt(sum(lengths(unit$index)), 0L)
+    expect_s3_class(b, "table")
+    expect_setequal(names(b), names(a))
+    expect_true(all(b[names(a)] <= a))
+    expect_lt(sum(b), sum(a))
 })
 
-test_that("use_info=TRUE and use_info=FALSE give the same result", {
-    a <- seqUnitGroupAnnot(favor_gds(), varnm="cadd_phred",
-        use_info=TRUE, verbose=FALSE)
-    b <- seqUnitGroupAnnot(favor_gds(), varnm="annotation/info/cadd_phred",
-        use_info=FALSE, verbose=FALSE)
-    expect_equal(lengths(a$index), lengths(b$index))
-    expect_equal(nrow(a$desp), nrow(b$desp))
-})
-
-test_that("seqUnitGroupAnnot validates the 'by' argument", {
-    expect_error(
-        seqUnitGroupAnnot(favor_gds(), varnm="cadd_phred", by=5L,
-            verbose=FALSE),
-        "by")
+test_that("the counts of several files are merged", {
+    gds <- ex_file("gnomad.genomes.v4.chr22_sub.gds")
+    cp <- tempfile(fileext=".gds")
+    file.copy(gds, cp)
+    on.exit(unlink(cp, force=TRUE))
+    a <- seqValueCounts(gds, "variant_type", verbose=FALSE)
+    b <- seqValueCounts(c(gds, cp), "variant_type", verbose=FALSE)
+    expect_equal(as.vector(b[names(a)]), 2L * as.vector(a))
 })

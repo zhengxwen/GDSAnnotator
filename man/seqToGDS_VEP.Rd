@@ -27,9 +27,9 @@ seqToGDS_VEP(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     Return the file name of GDS format with an absolute path.
 }
 \references{
-    McLaren W, Gil L, Hunt SE, Riat HS, Ritchie GR, Thormann A, Flicek P, Cunningham F.
-The Ensembl Variant Effect Predictor. Genome Biology Jun 6;17(1):122. (2016)
-DOI:10.1186/s13059-016-0974-4.
+    McLaren W, Gil L, Hunt SE, Riat HS, Ritchie GR, Thormann A, Flicek P,
+Cunningham F. The Ensembl Variant Effect Predictor. Genome Biology Jun 6;
+17(1):122. (2016) DOI:10.1186/s13059-016-0974-4.
 }
 
 \author{Xiuwen Zheng}
@@ -42,10 +42,14 @@ DOI:10.1186/s13059-016-0974-4.
 vcf_fn <- system.file("extdata", "example_wgs_sites_chr22_vep.vcf.gz",
     package="GDSAnnotator")
 
-seqToGDS_VEP(vcf_fn, "tmp.gds")
+out_fn <- tempfile(fileext=".gds")
+seqToGDS_VEP(vcf_fn, out_fn)
+
+# list the annotations in the output file
+seqAnnotList(out_fn)
 
 # delete the temporary file
-unlink("tmp.gds", force=TRUE)
+unlink(out_fn, force=TRUE)
 }
 
 \keyword{gds}

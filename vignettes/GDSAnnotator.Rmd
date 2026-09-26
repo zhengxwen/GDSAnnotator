@@ -3,7 +3,8 @@ title: "GDSAnnotator: Whole-genome variant annotation using GDS files"
 author:
 - name: Xiuwen Zheng
   affiliation: Genomics Research Center, AbbVie, North Chicago, US
-date: "May 2026"
+date: "`r BiocStyle::doc_date()`"
+package: "`r BiocStyle::pkg_ver('GDSAnnotator')`"
 output:
   BiocStyle::html_document:
     toc: true
@@ -17,6 +18,8 @@ vignette: >
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse=TRUE, comment="##")
+# the VCF examples need the suggested package VariantAnnotation
+has_va <- requireNamespace("VariantAnnotation", quietly=TRUE)
 ```
 
 # Introduction
@@ -40,24 +43,43 @@ Ensembl Variant Effect Predictor
 [FAVOR](https://favor.genohub.org) (Functional Annotation of Variants Online
 Resource) --- to provide comprehensive functional annotations, including
 predicted variant effects and functional characteristics of non-coding
-variants. Compared to a plain text file, the GDS format is 30--40 times more
-space-efficient when storing whole-genome annotations of FAVOR.
+variants. The outputs of [ANNOVAR](https://annovar.openbioinformatics.org/)
+are supported as well. Compared to a plain text file, the GDS format is
+30--40 times more space-efficient when storing whole-genome annotations of
+FAVOR.
+
+## Relation to other Bioconductor packages
+
+`GDSAnnotator` builds on `r Biocpkg("gdsfmt")` and `r Biocpkg("SeqArray")`:
+the annotation files it creates are SeqArray GDS files (with the annotations
+stored as INFO fields under `annotation/info/`, and without genotypes), so
+every SeqArray function (`seqOpen()`, `seqGetData()`, `seqSetFilter()`,
+`seqBlockApply()`, ...) can be used on them directly. Variants can be supplied
+as `r Biocpkg("GenomicRanges")` `GRanges` objects, `r Biocpkg("S4Vectors")`
+`DataFrame` objects, VCF files or `VCF` objects of
+`r Biocpkg("VariantAnnotation")` (a suggested package, loaded on demand), and
+the annotations are returned as a `DataFrame`. Unlike
+`VariantAnnotation::locateVariants()` and `predictCoding()`, which derive the
+consequences from transcript models within R, `GDSAnnotator` stores and
+queries the precomputed output of external annotators and databases.
 
 ## Key functions
 
-| Function            | Description                                                 |
-|:--------------------|:------------------------------------------------------------|
-| `seqToGDS_FAVOR`    | Convert FAVOR CSV files to GDS                              |
-| `seqToGDS_gnomAD`   | Convert gnomAD VCF files to GDS                             |
-| `seqToGDS_VEP`      | Convert Ensembl VEP VCF output to GDS                       |
-| `seqToGDS_SnpEff`   | Convert SnpEff VCF output to GDS                            |
-| `seqAnnotate`       | Annotate variants using annotations stored in GDS           |
-| `seqAnnotList`      | List the annotations stored in a GDS file                   |
-| `seqValueCounts`    | Calculate the counts of unique annotation values            |
-| `seqUnitGroupAnnot` | Group variants based on their annotations                   |
-| `seqAnnotStat`      | Calculate the summary statistics of variants & annotations  |
-| `seqAnnotReport`    | Generate a summary report in HTML or Markdown format        |
-| `seqAnnotGeneTable` | Per-gene annotation counts, broken down by impact           |
+| Function            | Description                                       |
+|:--------------------|:--------------------------------------------------|
+| `seqToGDS_FAVOR`    | Convert FAVOR CSV files to GDS                    |
+| `seqToGDS_gnomAD`   | Convert gnomAD VCF files to GDS                   |
+| `seqToGDS_VEP`      | Convert Ensembl VEP VCF output to GDS             |
+| `seqToGDS_SnpEff`   | Convert SnpEff VCF output to GDS                  |
+| `seqToGDS_ANNOVAR`  | Convert ANNOVAR-annotated VCF files to GDS        |
+| `seqAnnotate`       | Annotate variants using annotations stored in GDS |
+| `seqAnnotateVCF`    | Annotate the variants of a VCF file               |
+| `seqAnnotateGDS`    | Annotate the variants of a SeqArray GDS file      |
+| `seqAnnotList`      | List the annotations stored in a GDS file         |
+| `seqValueCounts`    | Count the unique values of annotations            |
+| `seqAnnotStat`      | Summary statistics of variants and annotations    |
+| `seqAnnotReport`    | Summary report in HTML, Markdown or R Markdown    |
+| `seqAnnotGeneTable` | Per-gene annotation counts, broken down by impact |
 
 # Installation
 
@@ -101,7 +123,12 @@ available).
 The `seqAnnotate()` generic accepts variants in several forms: a character
 vector of `chr-pos-ref-alt` strings, a `data.frame`/`DataFrame` with
 chromosome, position, reference and alternative allele columns, a `GRanges` or
-`GRangesList`, or an open `SeqVarGDSClass` object.
+`GRangesList`, a `VCF` object of `r Biocpkg("VariantAnnotation")`, or an open
+`SeqVarGDSClass` object; `seqAnnotateVCF()` and `seqAnnotateGDS()` accept a
+VCF or GDS file name. The variants are matched by
+chromosome, position, reference and alternative allele, and the annotations
+are returned as a `DataFrame` with one row per input variant (`NA` for the
+variants absent from the annotation file).
 
 ## From a character vector of variant IDs
 
@@ -155,6 +182,45 @@ gr <- GenomicRanges::GRanges(
         end   = c(10510125, 10510250)))
 
 seqAnnotate(gr, annot_gds, varnm = c("apc_conservation", "cadd_phred"))
+```
+
+## From a VCF file or a `VCF` object
+
+A `VCF` object of the `r Biocpkg("VariantAnnotation")` package
+(`CollapsedVCF` or `ExpandedVCF`) is annotated with one row per alternative
+allele, and `seqAnnotateVCF()` does the same for a VCF file, which it reads
+with `VariantAnnotation::readVcf()`. `VariantAnnotation` is a suggested
+package, loaded only when a VCF file or object is annotated. Here the
+variants of the gnomAD example VCF are looked up in the FAVOR subset:
+
+```{r annot-vcf, eval = has_va}
+vcf_fn <- system.file("extdata", "gnomad.genomes.v4.chr22_sub.vcf.gz",
+    package = "GDSAnnotator")
+vcf <- VariantAnnotation::readVcf(vcf_fn)
+dim(vcf)
+
+res <- seqAnnotate(vcf, annot_gds,
+    varnm = c("rsid", "cadd_phred", "linsight"), verbose = FALSE)
+table(found = !is.na(res$cadd_phred))
+head(res[!is.na(res$cadd_phred), ])
+
+# the same, directly from the file name
+res2 <- seqAnnotateVCF(vcf_fn, annot_gds,
+    varnm = c("rsid", "cadd_phred", "linsight"), verbose = FALSE)
+identical(res, res2)
+```
+
+## Whole-genome annotation with one file per chromosome
+
+For whole-genome resources the annotation is expected to be split into one
+GDS file per chromosome (this is how FAVOR and gnomAD are distributed), and
+`annot_gds` accepts a character vector of file names. Each file is opened
+once, the query variants are dispatched to the file of their chromosome, and
+the results are returned in the order of the input:
+
+```{r annot-multi, eval = FALSE}
+annot_gds <- sprintf("favor_chr%s.gds", c(1:22, "X"))
+seqAnnotate(snps, annot_gds, varnm = c("cadd_phred", "linsight"))
 ```
 
 ## Writing annotations into a SeqArray GDS file
@@ -269,28 +335,6 @@ SeqArray::seqClose(f)
 Set `per_variant = TRUE` to collapse multi-valued annotations (e.g. multiple
 VEP consequences per variant) to a single count per variant, and
 `parallel = TRUE` to enable multi-core processing for large files.
-
-## Grouping variants by annotation
-
-`seqUnitGroupAnnot()` groups variants by the values of one or more
-annotation fields, optionally applying filters via `cond`. This is useful
-for constructing variant-set units for downstream aggregation tests (e.g.
-rare-variant association analysis):
-
-```{r unit-group}
-gds_fn <- system.file("extdata", "example_wgs_sites_chr22_snpeff.gds",
-    package = "GDSAnnotator")
-
-# Group the variants by gene, keeping only the HIGH-impact annotations
-u <- seqUnitGroupAnnot(gds_fn,
-    varnm = c("ANN.list/Gene_Name", "ANN.list/Annotation_Impact"),
-    by    = "ANN.list/Gene_Name",
-    cond  = list(NULL, "HIGH"),
-    verbose = FALSE)
-
-length(u$index)   # the number of variant-set units
-head(u$desp)
-```
 
 ## Summary report
 

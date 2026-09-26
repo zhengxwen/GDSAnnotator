@@ -14,7 +14,13 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
         standardGeneric("seqAnnotate"))
 
 
-# Open the GDS file(s) with variant annotation
+# Normalize chromosome names for matching, ignoring the "chr" prefix
+#   (e.g., "chr22" in a VCF file vs "22" in a GDS file)
+.norm_chr <- function(x) sub("^chr", "", as.character(x), ignore.case=TRUE)
+
+# Open the GDS file(s) with variant annotation; the returned list is named
+#   by the chromosome of each file ("chr" + the chromosome label used in
+#   the file), for dispatching the query variants to the files
 .open_annot_gds <- function(gds_fn, verbose=TRUE)
 {
     ans <- gds_fn
@@ -25,30 +31,36 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
         # open the GDS file(s)
         ans <- vector("list", length(gds_fn))
         on.exit({ for (f in ans) if (!is.null(f)) seqClose(f) })
-        nm <- character(length(gds_fn))
         for (i in seq_along(gds_fn))
         {
             if (isTRUE(verbose))
                 cat("Open", sQuote(basename(gds_fn[i])))
             # open the file
             f <- ans[[i]] <- seqOpen(gds_fn[i])
-            # check chromosome
-            v <- seqGetData(f, "$chromosome")
             if (isTRUE(verbose))
             {
-                .cat(" [",
-                    prettyNum(length(v), big.mark=",", scientific=FALSE),
+                n <- seqSummary(f, "genotype", verbose=FALSE)$dim[3L]
+                .cat(" [", prettyNum(n, big.mark=",", scientific=FALSE),
                     " variants]")
             }
-            if (nrun(v) > 1L)
-                stop(gds_fn[i], " should only contain one chromosome.")
-            nm[i] <- paste0("chr",
-                paste(as.character(unique(v)), collapse="&"))
         }
-        names(ans) <- nm
-        # output
-        on.exit()
     }
+    # the chromosome of each file (the files opened above are closed by the
+    #   on.exit() handler if an error occurs here)
+    nm <- vapply(seq_along(ans), function(i)
+    {
+        v <- seqGetData(ans[[i]], "$chromosome")
+        if (nrun(v) > 1L)
+        {
+            fn <- if (is.character(gds_fn)) gds_fn[i] else
+                paste0("annot_gds[[", i, "]]")
+            stop(fn, " should only contain one chromosome.")
+        }
+        paste(as.character(unique(v)), collapse="&")
+    }, "")
+    names(ans) <- paste0("chr", nm)
+    # output
+    on.exit()
     ans
 }
 
@@ -154,7 +166,8 @@ ann_pos_allele <- function(gds, chr, pos, ref, alt, varnm, verbose=TRUE)
         ans <- DataFrame(ans)
         if (l_verbose) cat("\n")
         # ii maps each input to the filtered set row (NA = not found)
-        # drop=FALSE: keep a DataFrame even when a single annotation is requested
+        # drop=FALSE: keep a DataFrame even when a single annotation is
+        #   requested
         ans <- ans[ii, , drop=FALSE]
         ans$..no <- is.na(ii)
         ans
@@ -184,21 +197,24 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
     if (!is.integer(pos)) pos <- as.integer(pos)
     chr_lst <- unique(chr)
     if (length(chr) == 1L) chr <- rep(chr, length(pos))
-    # match chromosome names in the annotation GDS files
-    s <- strsplit(gsub("^chr", "", names(annot_gds)), "&", fixed=TRUE)
+    # match chromosome names in the annotation GDS files, ignoring the "chr"
+    #   prefix; 'gds_chr' is the chromosome label as stored in each file
+    s <- strsplit(sub("^chr", "", names(annot_gds)), "&", fixed=TRUE)
     gds_idx <- rep(seq_along(annot_gds), times=lengths(s))
-    names(gds_idx) <- unlist(s)    
+    gds_chr <- unlist(s)
+    names(gds_idx) <- .norm_chr(gds_chr)
     # process each chromosome subset
     ans <- vector("list", length(chr_lst))
     for (i in seq_along(chr_lst))
     {
         ch <- chr_lst[i]
         # find the GDS file(s) for this chromosome
-        gds_ii <- which(names(gds_idx) == ch)
+        gds_ii <- which(names(gds_idx) == .norm_chr(ch))
         # indices for this chromosome
         idx <- which(chr == ch)
         if (!length(gds_ii))
         {
+            # no file for this chromosome: all the variants are not found
             d <- ann_pos_allele(annot_gds[[1L]], ch, pos[idx], ref[idx],
                 alt[idx], varnm, verbose=FALSE)
             if (!length(varnm)) d$file_idx <- Rle(1L, nrow(d))
@@ -207,14 +223,17 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
             ans[[i]] <- d
             next
         }
-        # process each GDS file for this chromosome
-        v <- lapply(seq_along(gds_ii), function(j)
+        # process each GDS file for this chromosome: the variants not found
+        #   in a file are looked up in the next file(s)
+        v <- vector("list", length(gds_ii))
+        for (j in seq_along(gds_ii))
         {
-            k <- gds_ii[j]
-            if (!length(idx)) return(NULL)
-            # annotate variants in this chromosome subset
-            d <- ann_pos_allele(annot_gds[[k]],
-                ch, pos[idx], ref[idx], alt[idx], varnm, verbose)
+            if (!length(idx)) break
+            k <- gds_idx[gds_ii[j]]
+            # annotate variants in this chromosome subset, using the
+            #   chromosome label of the file
+            d <- ann_pos_allele(annot_gds[[k]], gds_chr[gds_ii[j]],
+                pos[idx], ref[idx], alt[idx], varnm, verbose)
             if (!length(varnm)) d$file_idx <- Rle(k, nrow(d))
             # temporary index for combining results in original input order
             d$..idx <- idx
@@ -222,14 +241,14 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
             {
                 # some variants are not found in this file,
                 # so they will be processed in the next file(s)
-                idx <<- idx[d$..no]
+                idx <- idx[d$..no]
                 d <- d[!d$..no, , drop=FALSE]
             }
             d$..no <- NULL  # remove the temporary column
-            # return
-            d
-        })
+            v[[j]] <- d
+        }
         # combine results for this chromosome
+        v <- v[!vapply(v, is.null, FALSE)]
         ans[[i]] <- if (length(v) == 1L) v[[1L]] else do.call(rbind, v)
     }
     # combine results in original input order
@@ -247,7 +266,6 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
     col_pos="pos", col_ref="ref", col_alt="alt", ..., verbose=TRUE)
 {
     # check
-    stopifnot(is.character(varnm))
     chr <- object[[col_chr]]
     if (is.null(chr)) stop("No 'chr' column.")
     pos <- object[[col_pos]]
@@ -264,6 +282,7 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
     if (missing(varnm))
         varnm <- .annot_list(annot_gds[[1L]])
     if (is.null(varnm)) varnm <- character()
+    stopifnot(is.character(varnm))
     # process
     ann_chr_pos_allele(chr, pos, ref, alt, annot_gds, varnm, verbose=verbose)
 }
@@ -300,7 +319,7 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         varnm <- .annot_list(annot_gds[[1L]])
     if (is.null(varnm)) varnm <- character()
     stopifnot(is.character(varnm))
-    # read data 
+    # read data
     if (isTRUE(verbose)) cat("Reading chromosome")
     chr <- seqGetData(object, "$chromosome")
     if (isTRUE(verbose)) cat(", position")
@@ -521,7 +540,9 @@ ann_GRanges <- function(object, annot_gds, varnm, ..., verbose=TRUE)
 ann_IRanges <- function(object, annot_gds, varnm, chr, ..., verbose=TRUE)
 {
     # check
-    stopifnot(is.character(varnm))
+    if (missing(chr))
+        stop("'chr' should be specified for an IRanges object.")
+    stopifnot(is.character(chr), length(chr)>0L)
     # check & open annotated gds
     .check_annot_gds(annot_gds)
     if_close_gds <- is.character(annot_gds)
@@ -531,6 +552,7 @@ ann_IRanges <- function(object, annot_gds, varnm, chr, ..., verbose=TRUE)
     if (missing(varnm))
         varnm <- .annot_list(annot_gds[[1L]])
     if (is.null(varnm)) varnm <- character()
+    stopifnot(is.character(varnm))
     # verbose
     l_verbose <- isTRUE(verbose) && (length(varnm)>1L)
     if (l_verbose)
@@ -561,6 +583,62 @@ ann_IRanges <- function(object, annot_gds, varnm, chr, ..., verbose=TRUE)
 }
 
 
+# Annotate a VCF object (from the package VariantAnnotation): one row per
+#   alternative allele, so a CollapsedVCF and its expand()-ed version give
+#   the same output; a row without any alternative allele is skipped.
+#   VariantAnnotation is a suggested package, loaded on demand, so the class
+#   VCF is not used in a method signature: seqAnnotate() reaches this
+#   function via the method for "ANY" below. seqnames() and start() are the
+#   generics imported from GenomicRanges and IRanges, whose methods for
+#   VCF objects are registered by SummarizedExperiment (a dependency of
+#   VariantAnnotation), and ref() and alt() are called with '::' since
+#   SeqArray defines its own generics of these names
+ann_VCF <- function(object, annot_gds, varnm, ..., verbose=TRUE)
+{
+    if (!requireNamespace("VariantAnnotation", quietly=TRUE))
+        stop("The package 'VariantAnnotation' should be installed.")
+    ref_al <- as.character(VariantAnnotation::ref(object))
+    alt_al <- VariantAnnotation::alt(object)
+    if (is.character(alt_al) || is(alt_al, "XStringSet"))
+    {
+        # ExpandedVCF: one alternative allele per row (note that a
+        #   DNAStringSet is a List of DNAString, so lengths() would give
+        #   the number of bases)
+        nalt <- rep.int(1L, length(alt_al))
+        alt_al <- as.character(alt_al)
+    } else {
+        # CollapsedVCF: a DNAStringSetList or CharacterList with zero, one
+        #   or more alternative alleles per row
+        nalt <- lengths(alt_al)
+        alt_al <- as.character(unlist(alt_al, use.names=FALSE))
+    }
+    variants <- DataFrame(
+        chr=rep(as.character(seqnames(object)), nalt),
+        pos=rep(start(object), nalt),
+        ref=rep(ref_al, nalt), alt=unname(alt_al))
+    # skip the rows without alternative allele (ALT is "." in the VCF file)
+    i <- !is.na(variants$alt) & nzchar(variants$alt) & variants$alt != "."
+    if (!all(i)) variants <- variants[i, , drop=FALSE]
+    # process
+    seqAnnotate(variants, annot_gds, varnm, ..., verbose=verbose)
+}
+
+
+# Fallback for the classes without a specific method: a VCF object of the
+#   package VariantAnnotation (CollapsedVCF or ExpandedVCF) is annotated by
+#   ann_VCF(), any other class is an error
+ann_any <- function(object, annot_gds, varnm, ..., verbose=TRUE)
+{
+    if (inherits(object, "VCF"))
+    {
+        ann_VCF(object, annot_gds, varnm, ..., verbose=verbose)
+    } else {
+        stop("No seqAnnotate() method for an object of class ",
+            sQuote(class(object)[1L]), ".")
+    }
+}
+
+
 # Set methods
 setMethod("seqAnnotate", signature(object="data.frame"), ann_dataframe)
 setMethod("seqAnnotate", signature(object="DataFrame"), ann_dataframe)
@@ -569,30 +647,22 @@ setMethod("seqAnnotate", signature(object="character"), ann_variant)
 setMethod("seqAnnotate", signature(object="GRanges"), ann_GRanges)
 setMethod("seqAnnotate", signature(object="GRangesList"), ann_GRanges)
 setMethod("seqAnnotate", signature(object="IRanges"), ann_IRanges)
+setMethod("seqAnnotate", signature(object="ANY"), ann_any)
 
 
-# Annotate a VCF file
+# Annotate a VCF file: read it with VariantAnnotation::readVcf() and
+#   annotate the VCF object
 seqAnnotateVCF <- function(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
 {
     # check
     stopifnot(is.character(vcf_fn), length(vcf_fn)==1L)
     if (!requireNamespace("VariantAnnotation", quietly=TRUE))
         stop("The package 'VariantAnnotation' should be installed.")
-    if (!requireNamespace("SummarizedExperiment", quietly=TRUE))
-        stop("The package 'SummarizedExperiment' should be installed.")
     # open the file
     if (isTRUE(verbose)) .cat("Open ", sQuote(vcf_fn))
     vcf <- VariantAnnotation::readVcf(vcf_fn)
-    gr <- SummarizedExperiment::rowRanges(vcf)
-    fixed <- S4Vectors::mcols(gr)
-    nalt <- lengths(fixed$ALT)
-    variants <- DataFrame(
-        chr=rep(as.character(GenomicRanges::seqnames(gr)), nalt),
-        pos=rep(IRanges::start(gr), nalt),
-        ref=rep(as.character(fixed$REF), nalt),
-        alt=as.character(unlist(fixed$ALT, use.names=FALSE)))
     # output
-    seqAnnotate(variants, annot_gds, varnm, ..., verbose=verbose)
+    ann_VCF(vcf, annot_gds, varnm, ..., verbose=verbose)
 }
 
 

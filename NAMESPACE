@@ -1,16 +1,25 @@
-# Import all packages listed as Imports or Depends
+# Imports (VariantAnnotation is a suggested package, loaded on demand for
+#   VCF files and VCF objects)
 import(methods)
 import(gdsfmt)
 import(SeqArray)
-importFrom(utils, head, read.table, read.csv, flush.console, write.table, str,
-    tail, type.convert, untar)
-importFrom(IRanges, IRanges, which)
+importFrom(utils, head, read.csv, untar)
+importFrom(IRanges, IRanges, which, start)
 importFrom(S4Vectors, nrun, DataFrame, Rle, runLength, runValue)
-importFrom(GenomicRanges, GRanges, GRangesList)
+importFrom(GenomicRanges, GRanges, GRangesList, seqnames)
+importClassesFrom(IRanges, IRanges)
+importClassesFrom(S4Vectors, DataFrame)
+importClassesFrom(GenomicRanges, GRanges, GRangesList)
 
-
-# Export all names
-exportPattern("^seq")
+# Exports
+export(
+    seqAnnotate, seqAnnotateGDS, seqAnnotateVCF,
+    seqAnnotList, seqValueCounts,
+    seqToGDS_FAVOR, seqToGDS_FAVOR_tar, seqToGDS_gnomAD,
+    seqToGDS_VEP, seqToGDS_SnpEff, seqToGDS_ANNOVAR,
+    seqAnnotStat, seqAnnotReport, seqAnnotGeneTable
+)
+exportMethods(seqAnnotate)
 
 # S3 methods
 S3method(print, SeqAnnotStat)

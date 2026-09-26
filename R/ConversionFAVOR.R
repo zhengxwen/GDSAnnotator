@@ -33,7 +33,10 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         {
             s <- readLines(csv_fn[i], n=1L)
             if (length(s)!=1L || s!=s0)
-                stop(sprintf("Error in the header of 'csv_fn[%d]'", i))
+            {
+                stop(sprintf("The header of 'csv_fn[%d]' differs from ", i),
+                    "the header of the first file.")
+            }
         }
     }
 
@@ -61,9 +64,9 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     nm_others <- character()
     for (i in seq_along(csv_fn))
     {
-        .cat("Reading ", csv_fn[i], " ...")
+        if (verbose) .cat("Reading ", csv_fn[i], " ...")
         df <- read.csv(csv_fn[i])
-        .cat("    ", nrow(df), " x ", ncol(df))
+        if (verbose) .cat("    ", nrow(df), " x ", ncol(df))
         if (!all(nm_lst %in% colnames(df)))
         {
             stop("The csv header should contain all of ",

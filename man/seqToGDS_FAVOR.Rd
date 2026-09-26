@@ -27,6 +27,21 @@ seqToGDS_FAVOR_tar(tar_fn, out_fn, fn_in_tar=NULL,
     \item{tar_cmd}{the path of TAR to the command to be used}
     \item{verbose}{if \code{TRUE}, show information}
 }
+\details{
+    The CSV files (which may be gzip-compressed) should have the columns
+"variant_vcf", "chromosome", "position", "ref_vcf" and "alt_vcf"; all the
+other columns are stored as annotations under "annotation/info" (or under
+"annotation/info/root" if \code{root} is not empty). The column types of the
+FAVOR essential database are defined in the internal table
+"favor_csv_header.csv" in the "extdata" folder.
+
+    \code{seqToGDS_FAVOR_tar()} reads the CSV files directly from a tar
+archive (e.g., the per-chromosome files of the FAVOR essential database)
+block by block, so that it does not require extracting the archive nor
+loading a whole CSV file in memory; it calls the external program
+\code{tar_cmd} via \code{pipe()}, so a \code{tar} program should be available
+on the system.
+}
 \value{
     Return the file name of GDS format with an absolute path.
 }
@@ -46,10 +61,14 @@ NAR 2022 Nov 9; gkac966. PMID: 36350676. DOI: 10.1093/nar/gkac966.
 csv_fn <- system.file("extdata", "favor_chr22_sub.csv.gz",
     package="GDSAnnotator")
 
-seqToGDS_FAVOR(csv_fn, "tmp.gds")
+out_fn <- tempfile(fileext=".gds")
+seqToGDS_FAVOR(csv_fn, out_fn)
+
+# list the annotations in the output file
+seqAnnotList(out_fn)
 
 # delete the temporary file
-unlink("tmp.gds", force=TRUE)
+unlink(out_fn, force=TRUE)
 }
 
 \keyword{gds}

@@ -21,6 +21,26 @@ CHANGES IN VERSION 0.99.1
       usage no longer depends on the total number of variants (requiring the
       block writing in `SeqArray::seqAddValue()`, SeqArray_v1.53.2)
 
+    o `seqAnnotate()` accepts the `VCF` objects of the package
+      VariantAnnotation (CollapsedVCF and ExpandedVCF), annotating one row
+      per alternative allele; `seqAnnotateVCF()` does the same after reading
+      the file (VariantAnnotation is a suggested package, loaded on demand)
+
+    o Bug fix: `seqAnnotate()` failed when 'varnm' was missing for a
+      data.frame, DataFrame or IRanges input, instead of using all the
+      annotations of the first annotation file
+
+    o Bug fix: `seqToGDS_FAVOR()` printed progress messages with
+      'verbose=FALSE'
+
+    o The categories of each counter in `seqAnnotStat()` are stored as plain
+      named numeric vectors in a fixed order, so that the output is identical
+      regardless of 'parallel' and 'bsize'
+
+    o Explicit exports in NAMESPACE; the examples write to `tempfile()`;
+      the provenance of the example data in 'inst/extdata' is documented in
+      'inst/script'; new package help page `?GDSAnnotator`
+
 
 CHANGES IN VERSION 0.99.0 (March 2025)
 -------------------------
