@@ -127,7 +127,10 @@ and for its expanded version.
     When the annotations are written to a GDS file (\code{add_to_gds} is
 \code{TRUE} or a file name), the variants are matched and the annotation data
 are loaded and written block by block (see \code{bsize}), so that the memory
-usage does not depend on the total number of variants.
+usage does not depend on the total number of variants. The genotype GDS file
+then holds the annotations of its variants under "annotation/info" (or under
+"annotation/info/root"); with the annotations of FAVOR, this produces an
+annotated GDS (aGDS) file, see \code{\link{seqToGDS_FAVOR}}.
 }
 
 \author{Xiuwen Zheng}

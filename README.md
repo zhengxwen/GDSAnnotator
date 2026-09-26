@@ -9,7 +9,9 @@ GDSAnnotator: Whole-genome variant annotation data manipulation using GDS files
 
 Variant annotation is a critical step in genomic data analysis, facilitating the interpretation of genetic variations and their potential biological significance. As large-scale whole-genome sequencing studies continue to expand, efficient storage, retrieval, and manipulation of variant annotation data have become increasingly important. The Genomic Data Structure ([GDS](https://www.bioconductor.org/packages/SeqArray/)) file format offers a scalable and storage-efficient solution for large genomic datasets, enabling rapid access and computational efficiency.
 
-GDSAnnotator is an R package designed for fast and memory-efficient annotation of variants stored in GDS files. It integrates seamlessly into Bioconductor tools, and utilizes external data resources, e.g., Ensembl Variant Effect Predictor ([VEP](https://useast.ensembl.org/info/docs/tools/vep/index.html)), [SnpEff](https://pcingola.github.io/SnpEff/), [ANNOVAR](https://annovar.openbioinformatics.org/), [gnomAD](https://gnomad.broadinstitute.org/) and FAVOR ([Functional Annotation of Variants Online Resource](https://favor.genohub.org)), to provide comprehensive functional annotations, including predicted variant effects and functional characteristics of non-coding variants. Compared to a plain text file, GDS format is 30-40 times more space-efficient when storing whole-genome annotations of FAVOR.
+GDSAnnotator is an R package designed for fast and memory-efficient annotation of variants stored in GDS files. It integrates seamlessly into Bioconductor tools, and utilizes external data resources, e.g., Ensembl Variant Effect Predictor ([VEP](https://useast.ensembl.org/info/docs/tools/vep/index.html)), [SnpEff](https://pcingola.github.io/SnpEff/), [gnomAD](https://gnomad.broadinstitute.org/) and FAVOR ([Functional Annotation of Variants Online Resource](https://favor.genohub.org)), to provide comprehensive functional annotations, including predicted variant effects and functional characteristics of non-coding variants. Compared to a plain text file, GDS format is 30-40 times more space-efficient when storing whole-genome annotations of FAVOR.
+
+Storing variant annotations in a GDS file was introduced by [FAVOR](https://doi.org/10.1093/nar/gkac966) with the annotated GDS (aGDS) format, in which the FAVOR functional annotations of the variants of a study are added to the SeqArray GDS file holding the genotypes. GDSAnnotator generalizes this format to annotation GDS files of any source, with or without genotypes: a whole-genome annotation database (FAVOR, gnomAD, Ensembl VEP, SnpEff, ...) is kept as one GDS file per chromosome and queried by position and alleles, and the annotations of the variants of a study are written into its genotype GDS file; with the FAVOR annotations, this produces an aGDS file.
 
 
 ## Bioconductor
@@ -93,7 +95,6 @@ https://gds-stat.s3.amazonaws.com/download/favor/Example1_FAVOR_GDS.html
 | seqToGDS_gnomAD | Convert gnomAD VCF files to GDS |
 | seqToGDS_VEP    | Convert Ensembl VEP VCF output to GDS |
 | seqToGDS_SnpEff | Convert SnpEff VCF output to GDS |
-| seqToGDS_ANNOVAR | Convert ANNOVAR-annotated VCF files to GDS |
 | seqAnnotate     | Annotate variants using the annotation stored in GDS |
 | seqAnnotateVCF  | Annotate the variants of a VCF file |
 | seqAnnotateGDS  | Annotate the variants of a SeqArray GDS file |

@@ -8,6 +8,7 @@ package: "`r BiocStyle::pkg_ver('GDSAnnotator')`"
 output:
   BiocStyle::html_document:
     toc: true
+    toc_float: true
     toc_depth: 3
     number_sections: true
 vignette: >
@@ -35,18 +36,37 @@ rapid access and computational efficiency.
 
 `GDSAnnotator` is an R/Bioconductor package designed for fast and
 memory-efficient annotation of variants stored in GDS files. It integrates
-with Bioconductor tools and utilizes external data resources --- such as the
+with Bioconductor tools and utilizes external data resources, such as the
 Ensembl Variant Effect Predictor
 ([VEP](https://useast.ensembl.org/info/docs/tools/vep/index.html)),
 [SnpEff](https://pcingola.github.io/SnpEff/),
 [gnomAD](https://gnomad.broadinstitute.org/) and
 [FAVOR](https://favor.genohub.org) (Functional Annotation of Variants Online
-Resource) --- to provide comprehensive functional annotations, including
+Resource), to provide comprehensive functional annotations, including
 predicted variant effects and functional characteristics of non-coding
-variants. The outputs of [ANNOVAR](https://annovar.openbioinformatics.org/)
-are supported as well. Compared to a plain text file, the GDS format is
-30--40 times more space-efficient when storing whole-genome annotations of
-FAVOR.
+variants. Compared to a plain text file, the GDS format is 30--40 times more
+space-efficient when storing whole-genome annotations of FAVOR.
+
+## From aGDS to annotation GDS files
+
+Storing variant annotations in a GDS file was introduced by
+[FAVOR](https://doi.org/10.1093/nar/gkac966) with the annotated GDS (aGDS)
+format: the FAVOR functional annotations of the variants of a study are added
+to the SeqArray GDS file that holds the genotypes, so that genotypes and
+annotations are read from a single file. `GDSAnnotator` generalizes the aGDS
+format in three directions:
+
+* the source of the annotations: not only FAVOR, but also the allele
+  frequencies of gnomAD, the consequences predicted by Ensembl VEP or SnpEff,
+  and any other resource distributed as a VCF file;
+* the content of the file: an annotation GDS file does not need genotypes,
+  so a whole-genome annotation database is kept as one GDS file per
+  chromosome and queried by position and alleles, without loading it into
+  memory;
+* the use of the file: the annotations of the variants of a study are
+  written into its genotype GDS file block by block (with the FAVOR
+  annotations, this produces an aGDS file), and the annotations are
+  summarized and reported directly from the GDS file, without the annotator.
 
 ## Relation to other Bioconductor packages
 
@@ -58,10 +78,7 @@ every SeqArray function (`seqOpen()`, `seqGetData()`, `seqSetFilter()`,
 as `r Biocpkg("GenomicRanges")` `GRanges` objects, `r Biocpkg("S4Vectors")`
 `DataFrame` objects, VCF files or `VCF` objects of
 `r Biocpkg("VariantAnnotation")` (a suggested package, loaded on demand), and
-the annotations are returned as a `DataFrame`. Unlike
-`VariantAnnotation::locateVariants()` and `predictCoding()`, which derive the
-consequences from transcript models within R, `GDSAnnotator` stores and
-queries the precomputed output of external annotators and databases.
+the annotations are returned as a `DataFrame`.
 
 ## Key functions
 
@@ -71,7 +88,6 @@ queries the precomputed output of external annotators and databases.
 | `seqToGDS_gnomAD`   | Convert gnomAD VCF files to GDS                   |
 | `seqToGDS_VEP`      | Convert Ensembl VEP VCF output to GDS             |
 | `seqToGDS_SnpEff`   | Convert SnpEff VCF output to GDS                  |
-| `seqToGDS_ANNOVAR`  | Convert ANNOVAR-annotated VCF files to GDS        |
 | `seqAnnotate`       | Annotate variants using annotations stored in GDS |
 | `seqAnnotateVCF`    | Annotate the variants of a VCF file               |
 | `seqAnnotateGDS`    | Annotate the variants of a SeqArray GDS file      |
@@ -247,23 +263,6 @@ seqAnnotate(seqOpen(geno_gds), annot_gds, varnm,
 All of them output a SeqArray-compatible GDS file, which can subsequently be
 queried with `seqAnnotate()`.
 
-## FAVOR
-
-Convert FAVOR CSV files (one chromosome per file) to GDS:
-
-```{r conv-favor}
-csv_fn <- system.file("extdata", "favor_chr22_sub.csv.gz",
-    package = "GDSAnnotator")
-
-out_fn <- tempfile(fileext = ".gds")
-seqToGDS_FAVOR(csv_fn, out_fn, verbose = FALSE)
-
-unlink(out_fn, force = TRUE)
-```
-
-When FAVOR is distributed as a tar archive of per-chromosome CSVs,
-`seqToGDS_FAVOR_tar()` can be used to convert directly from the tar file.
-
 ## gnomAD
 
 ```{r conv-gnomad}
@@ -339,7 +338,7 @@ VEP consequences per variant) to a single count per variant, and
 ## Summary report
 
 Ensembl VEP and SnpEff each write an HTML summary next to their VCF output,
-but that report is lost once the annotations have been converted to GDS ---
+but that report is lost once the annotations have been converted to GDS,
 and it is not available at all for a GDS file assembled from several sources.
 `seqAnnotStat()` and `seqAnnotReport()` regenerate an equivalent report
 directly from the GDS file.
@@ -378,7 +377,7 @@ taken from the file extension by default: `.md` gives GitHub-flavored
 Markdown, `.Rmd` gives R Markdown source, and anything else gives a
 self-contained HTML file that needs no JavaScript and no additional package,
 so it can be viewed offline. None of the three writes a companion image
-directory --- the report is always a single file.
+directory, so the report is always a single file.
 
 ```{r annot-report-md}
 md_fn <- tempfile(fileext = ".md")
@@ -395,8 +394,8 @@ seqAnnotReport(st, "annot_summary.html",
 ```
 
 The HTML charts are inline SVG and the Markdown charts are drawn with block
-characters. If the charts should be real plots instead --- to restyle them,
-or to fold the report into a larger document --- the `rmd` format writes an R
+characters. If the charts should be real plots instead, e.g., to restyle
+them or to fold the report into a larger document, the `rmd` format writes an R
 Markdown source in which the counts are embedded as R code and the charts are
 produced by `barplot()` at knit time:
 
@@ -429,66 +428,6 @@ gds_fn <- sprintf("annot_chr%d.gds", 1:22)
 
 st <- seqAnnotStat(gds_fn)
 seqAnnotReport(st, "wgs_summary.html", title = "Whole-genome annotation")
-```
-
-# Performance: compact storage and random access
-
-Two properties make the GDS representation attractive for whole-genome
-annotation. First, the columnar, typed and block-compressed layout is far more
-compact than a flat text table. Second --- and unlike a gzip-compressed text
-file, which must be decompressed and scanned end-to-end for every lookup --- a
-GDS file supports *random access*: `seqAnnotate()` reads only the variants and
-the annotation columns it actually needs, so memory use stays flat regardless
-of how large the underlying database is.
-
-```{r perf-size}
-annot_gds <- system.file("extdata", "favor_chr22_sub.gds",
-    package = "GDSAnnotator")
-ann <- seqAnnotList(annot_gds)
-
-# materialise the same content as a flat text table for comparison
-f <- SeqArray::seqOpen(annot_gds)
-tab <- data.frame(
-    chr = seqGetData(f, "$chromosome"), pos = seqGetData(f, "position"),
-    ref = seqGetData(f, "$ref"),        alt = seqGetData(f, "$alt"))
-for (nm in ann$name)
-    tab[[nm]] <- seqGetData(f, paste0("annotation/info/", nm), .tolist = NA)
-SeqArray::seqClose(f)
-
-tsv <- tempfile(fileext = ".tsv")
-write.table(tab, tsv, sep = "\t", row.names = FALSE, quote = FALSE)
-raw <- readBin(tsv, "raw", file.size(tsv))
-
-sizes <- c(
-    `GDS (LZMA)`     = file.size(annot_gds),
-    `flat text`      = file.size(tsv),
-    `flat text+gzip` = length(memCompress(raw, "gzip")))
-data.frame(KB = round(sizes / 1024, 1),
-    `x vs GDS` = round(sizes / sizes[["GDS (LZMA)"]], 1),
-    check.names = FALSE)
-unlink(tsv, force = TRUE)
-```
-
-```{r perf-query}
-# random-access query latency (only the requested variants are decoded)
-set.seed(1)
-k   <- sample(nrow(tab), 100)
-qry <- paste(tab$chr[k], tab$pos[k], tab$ref[k], tab$alt[k], sep = "-")
-
-system.time(for (i in 1:5)
-    seqAnnotate(qry, annot_gds, varnm = ann$name, verbose = FALSE))
-```
-
-On this 1,000-variant subset the GDS file is already an order of magnitude
-smaller than the raw text table, and about the same size as gzip-compressed
-text --- but with the random access that gzip cannot offer. On the complete
-whole-genome FAVOR database the ratio against raw text reaches 30--40x, while
-per-query latency and memory stay essentially constant because only the
-requested variants are read. A script for benchmarking at that scale ships
-with the package:
-
-```{r perf-script, eval = FALSE}
-system.file("benchmark", "benchmark.R", package = "GDSAnnotator")
 ```
 
 # Session information

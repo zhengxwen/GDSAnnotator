@@ -2,7 +2,6 @@ Package: GDSAnnotator
 Type: Package
 Title: Whole-genome variant annotation data manipulation using GDS files
 Version: 0.99.1
-Date: 2026-09-25
 Depends: R (>= 4.6.0), gdsfmt (>= 1.32.0), SeqArray (>= 1.53.2)
 Imports: methods, utils, IRanges, GenomicRanges, S4Vectors
 Suggests: VariantAnnotation, BiocStyle, knitr, rmarkdown, testthat (>= 3.0.0)
@@ -12,18 +11,21 @@ Authors@R: c(person("Xiuwen", "Zheng", role=c("aut", "cre"),
         person("Yuantao (Raven)", "Chen", role="ctb"),
         person("Hufeng", "Zhou", role="ctb", email="hufengzhou@g.harvard.edu"))
 Description: Fast and memory-efficient manipulation of whole-genome variant
-        annotation data stored in Genomic Data Structure (GDS) files. Variant
-        annotation resources and annotator outputs, including FAVOR, gnomAD,
-        Ensembl VEP, SnpEff and ANNOVAR, can be converted into compact
-        SeqArray-compatible GDS files that support random access. Variants
-        given as chr-pos-ref-alt strings, data frames, GRanges objects, VCF
-        files or VCF objects, or SeqArray GDS files can then be annotated by
-        querying these files, and the annotations can be written back into a
-        GDS file. The
-        package also computes summary statistics of the variants and their
-        annotations in a single pass over a file, and renders them as a
-        VEP/SnpEff-like report, making it a valuable resource for large-scale
-        genomic analyses.
+        annotation data stored in Genomic Data Structure (GDS) files. FAVOR
+        introduced the annotated GDS (aGDS) format, in which the FAVOR
+        annotations of a study are added to its genotype GDS file. This
+        package generalizes the format to annotation GDS files of any source,
+        with or without genotypes. Annotation resources and annotator
+        outputs, including FAVOR, gnomAD, Ensembl VEP and SnpEff, are
+        converted into compact SeqArray-compatible GDS files with random
+        access. Variants can be given as chr-pos-ref-alt strings, data
+        frames, GRanges objects, VCF files or objects, or SeqArray GDS files.
+        They are annotated by querying the annotation files, and the
+        annotations can be written back into a genotype GDS file. Summary
+        statistics of the variants and their annotations are computed in a
+        single pass over a file and rendered as a VEP/SnpEff-like report.
+        The package is intended for large-scale whole-genome sequencing
+        studies.
 License: GPL-3
 URL: https://github.com/zhengxwen/GDSAnnotator
 BugReports: https://github.com/zhengxwen/GDSAnnotator/issues

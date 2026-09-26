@@ -20,6 +20,15 @@ chromosome per file, under the node "annotation/info". The columnar, typed
 and block-compressed layout is compact and supports random access, so a small
 set of variants can be annotated without reading the whole database.
 
+    Storing variant annotations in a GDS file was introduced by FAVOR with
+the annotated GDS (aGDS) format, in which the FAVOR functional annotations of
+the variants of a study are added to the SeqArray GDS file holding the
+genotypes. This package generalizes the format to annotation GDS files of any
+source, with or without genotypes: a whole-genome annotation database is kept
+as one GDS file per chromosome and queried by position and alleles, and the
+annotations of the variants of a study are written into its genotype GDS file
+(with the FAVOR annotations, this produces an aGDS file).
+
     \itemize{
         \item Import: \code{\link{seqToGDS_FAVOR}},
             \code{\link{seqToGDS_gnomAD}}, \code{\link{seqToGDS_VEP}},
@@ -42,6 +51,16 @@ set of variants can be annotated without reading the whole database.
 }
 \author{
     Xiuwen Zheng \email{xiuwen.zheng@abbvie.com}
+}
+\references{
+    Zhou H, Arapoglou T, Li X, et al. FAVOR: functional annotation of
+variants online resource and annotator for variation across the human
+genome. Nucleic Acids Res. 2023;51(D1):D1300-D1311.
+DOI: 10.1093/nar/gkac966.
+
+    Zheng X, Gogarten SM, Lawrence M, et al. SeqArray: a storage-efficient
+high-performance data format for WGS variant calls. Bioinformatics.
+2017;33(15):2251-2257. DOI: 10.1093/bioinformatics/btx145.
 }
 \seealso{
     \code{\link[SeqArray]{seqOpen}}, \code{\link[SeqArray]{seqGetData}},
