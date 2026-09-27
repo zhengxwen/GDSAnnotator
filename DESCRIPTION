@@ -32,4 +32,5 @@ VignetteBuilder: knitr
 Encoding: UTF-8
 ByteCompile: TRUE
 biocViews: Infrastructure, DataRepresentation, DataImport, Sequencing,
-        WholeGenome, Genetics, Annotation, VariantAnnotation, GenomeAnnotation
+        WholeGenome, Genetics, Annotation, VariantAnnotation, GenomeAnnotation,
+        GenomicVariation

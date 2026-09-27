@@ -56,17 +56,16 @@ to the SeqArray GDS file that holds the genotypes, so that genotypes and
 annotations are read from a single file. `GDSAnnotator` generalizes the aGDS
 format in three directions:
 
-* the source of the annotations: not only FAVOR, but also the allele
-  frequencies of gnomAD, the consequences predicted by Ensembl VEP or SnpEff,
-  and any other resource distributed as a VCF file;
-* the content of the file: an annotation GDS file does not need genotypes,
-  so a whole-genome annotation database is kept as one GDS file per
-  chromosome and queried by position and alleles, without loading it into
-  memory;
-* the use of the file: the annotations of the variants of a study are
-  written into its genotype GDS file block by block (with the FAVOR
-  annotations, this produces an aGDS file), and the annotations are
-  summarized and reported directly from the GDS file, without the annotator.
+*   the source of the annotations: not only FAVOR, but also the allele
+    frequencies of gnomAD, the consequences predicted by Ensembl VEP or SnpEff,
+    and any other resource distributed as a VCF file;
+*   the content of the file: an annotation GDS file does not need genotypes, so
+    a whole-genome annotation database is kept as one GDS file per chromosome
+    and queried by position and alleles, without loading it into memory;
+*   the use of the file: the annotations of the variants of a study are written
+    into its genotype GDS file block by block (with the FAVOR annotations, this
+    produces an aGDS file), and the annotations are summarized and reported
+    directly from the GDS file, without the annotator.
 
 ## Relation to other Bioconductor packages
 
