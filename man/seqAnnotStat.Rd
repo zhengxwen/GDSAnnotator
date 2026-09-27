@@ -15,8 +15,8 @@ seqAnnotStat(gdsfile, parallel=FALSE, bsize=100000L, verbose=TRUE)
         character vector for multiple file names}
     \item{parallel}{\code{FALSE} (serial processing), \code{TRUE} (multicore
         processing), numeric value or other value; \code{parallel} is passed
-        to the argument \code{cl} in \code{\link{seqParallel}}, see
-        \code{\link{seqParallel}} for more details}
+        to the argument \code{cl} in \code{\link[SeqArray]{seqParallel}}, see
+        \code{\link[SeqArray]{seqParallel}} for more details}
     \item{bsize}{block size, i.e., the number of variants to be processed
         at a time}
     \item{verbose}{if \code{TRUE}, show information}
@@ -25,13 +25,13 @@ seqAnnotStat(gdsfile, parallel=FALSE, bsize=100000L, verbose=TRUE)
 }
 \details{
     All statistics are collected in a single call to
-\code{\link{seqBlockApply}}, so that the file is scanned only once no matter
-how many statistics are reported. Each statistic is stored as a named vector
-of counts, and the counts are additive: when \code{gdsfile} is a character
-vector of multiple file names (e.g., one GDS file per chromosome), the files
-are summarized one by one and the counters are merged into a single object.
-The memory usage is proportional to the number of distinct categories (e.g.,
-the number of genes), not to the number of variants.
+\code{\link[SeqArray]{seqBlockApply}}, so that the file is scanned only once
+no matter how many statistics are reported. Each statistic is stored as a
+named vector of counts, and the counts are additive: when \code{gdsfile} is a
+character vector of multiple file names (e.g., one GDS file per chromosome),
+the files are summarized one by one and the counters are merged into a single
+object. The memory usage is proportional to the number of distinct categories
+(e.g., the number of genes), not to the number of variants.
 
     Since the counters are additive, \code{parallel} splits the variants
 between the processes, each process calculates its own counters, and the

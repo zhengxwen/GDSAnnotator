@@ -65,7 +65,7 @@ seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
     \item{col_ref}{the column name for the reference alleles}
     \item{col_alt}{the column name for the alternative alleles}
     \item{chr}{a character vector of chromosome(s), used with an
-        \code{IRanges} object; passed to \code{\link{seqSetFilter}}}
+        \code{IRanges} object; passed to \code{\link[SeqArray]{seqSetFilter}}}
     \item{add_to_gds}{logical or character for an output file name; if
         \code{FALSE}, return DataFrame for annotation; if \code{TRUE}, add
         annotation to the input GDS file; if \code{add_to_gds} is a file name,

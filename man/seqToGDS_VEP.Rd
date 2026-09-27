@@ -34,7 +34,7 @@ Cunningham F. The Ensembl Variant Effect Predictor. Genome Biology Jun 6;
 
 \author{Xiuwen Zheng}
 \seealso{
-    \code{\link{seqVCF2GDS}}
+    \code{\link[SeqArray]{seqVCF2GDS}}
 }
 
 \examples{

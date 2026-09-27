@@ -53,7 +53,7 @@ NAR 2022 Nov 9; gkac966. PMID: 36350676. DOI: 10.1093/nar/gkac966.
 
 \author{Xiuwen Zheng}
 \seealso{
-    \code{\link{seqVCF2GDS}}
+    \code{\link[SeqArray]{seqVCF2GDS}}
 }
 
 \examples{

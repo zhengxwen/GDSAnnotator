@@ -35,7 +35,7 @@ PMID: 22728672.
 
 \author{Xiuwen Zheng}
 \seealso{
-    \code{\link{seqVCF2GDS}}
+    \code{\link[SeqArray]{seqVCF2GDS}}
 }
 
 \examples{

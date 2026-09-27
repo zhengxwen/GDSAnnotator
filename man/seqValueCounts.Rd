@@ -22,8 +22,8 @@ seqValueCounts(gdsfile, varnm, use_info=TRUE, FUN=NULL, per_variant=FALSE,
         are collapsed into a single count}
     \item{parallel}{\code{FALSE} (serial processing), \code{TRUE} (multicore
         processing), numeric value or other value; \code{parallel} is passed
-        to the argument \code{cl} in \code{\link{seqParallel}}, see
-        \code{\link{seqParallel}} for more details}
+        to the argument \code{cl} in \code{\link[SeqArray]{seqParallel}}, see
+        \code{\link[SeqArray]{seqParallel}} for more details}
     \item{bsize}{block size}
     \item{verbose}{if \code{TRUE}, show information}
     \item{...}{additional arguments passed to \code{FUN} if it is a function}

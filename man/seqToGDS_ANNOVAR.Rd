@@ -51,7 +51,7 @@ variants from high-throughput sequencing data. Nucleic Acids Research,
 
 \author{Xiuwen Zheng}
 \seealso{
-    \code{\link{seqVCF2GDS}}, \code{\link{seqToGDS_VEP}},
+    \code{\link[SeqArray]{seqVCF2GDS}}, \code{\link{seqToGDS_VEP}},
     \code{\link{seqToGDS_SnpEff}}
 }
 
