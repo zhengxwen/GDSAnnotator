@@ -14,7 +14,7 @@ GDSAnnotator is an R package designed for fast and memory-efficient annotation o
 Storing variant annotations in a GDS file was introduced by [FAVOR](https://doi.org/10.1093/nar/gkac966) with the annotated GDS (aGDS) format, in which the FAVOR functional annotations of the variants of a study are added to the SeqArray GDS file holding the genotypes. GDSAnnotator generalizes this format to annotation GDS files of any source, with or without genotypes: a whole-genome annotation database (FAVOR, gnomAD, Ensembl VEP, SnpEff, ...) is kept as one GDS file per chromosome and queried by position and alleles, and the annotations of the variants of a study are written into its genotype GDS file; with the FAVOR annotations, this produces an aGDS file.
 
 
-## Bioconductor
+## Installation
 
 Coming soon (the package is being prepared for submission). Once it is available:
 ```R
@@ -24,21 +24,25 @@ BiocManager::install("GDSAnnotator")
 ```
 
 
-## Installation
+## Key functions in GDSAnnotator
 
-* Development version from Github (for developers/testers only):
-```R
-library(remotes)
-install_github("zhengxwen/GDSAnnotator")
-```
-`install_github()` builds the package from source (no compiler is needed, the package contains R code only). The Bioconductor dependencies should be installed first:
-```R
-BiocManager::install(c("gdsfmt", "SeqArray", "GenomicRanges", "VariantAnnotation"))
-```
+| Function        | Description |
+|:----------------|:-------------------------------------------|
+| seqToGDS_FAVOR  | Convert FAVOR CSV files to GDS |
+| seqToGDS_gnomAD | Convert gnomAD VCF files to GDS |
+| seqToGDS_VEP    | Convert Ensembl VEP VCF output to GDS |
+| seqToGDS_SnpEff | Convert SnpEff VCF output to GDS |
+| seqAnnotate     | Annotate variants using the annotation stored in GDS |
+| seqAnnotateVCF  | Annotate the variants of a VCF file |
+| seqAnnotateGDS  | Annotate the variants of a SeqArray GDS file |
+| seqAnnotList    | List the annotations stored in the GDS file |
+| seqValueCounts  | Calculate the counts of unique values |
+| seqAnnotStat    | Calculate the summary statistics of variants and annotations |
+| seqAnnotReport  | Generate a summary report in HTML, Markdown or R Markdown format |
+| seqAnnotGeneTable | Per-gene annotation counts, broken down by impact |
 
 
-
-## Examples (1)
+## Example
 
 ```R
 library(GDSAnnotator)
@@ -81,28 +85,6 @@ seqAnnotate(snp, annot_gds, varnm)
 ## 4               NA                  NA              NA                     NA
 ## ......
 ```
-
-## Examples (2)
-
-https://gds-stat.s3.amazonaws.com/download/favor/Example1_FAVOR_GDS.html
-
-
-## Key functions in GDSAnnotator
-
-| Function        | Description |
-|:----------------|:-------------------------------------------|
-| seqToGDS_FAVOR  | Convert FAVOR CSV files to GDS |
-| seqToGDS_gnomAD | Convert gnomAD VCF files to GDS |
-| seqToGDS_VEP    | Convert Ensembl VEP VCF output to GDS |
-| seqToGDS_SnpEff | Convert SnpEff VCF output to GDS |
-| seqAnnotate     | Annotate variants using the annotation stored in GDS |
-| seqAnnotateVCF  | Annotate the variants of a VCF file |
-| seqAnnotateGDS  | Annotate the variants of a SeqArray GDS file |
-| seqAnnotList    | List the annotations stored in the GDS file |
-| seqValueCounts  | Calculate the counts of unique values |
-| seqAnnotStat    | Calculate the summary statistics of variants and annotations |
-| seqAnnotReport  | Generate a summary report in HTML, Markdown or R Markdown format |
-| seqAnnotGeneTable | Per-gene annotation counts, broken down by impact |
 
 
 ## See also

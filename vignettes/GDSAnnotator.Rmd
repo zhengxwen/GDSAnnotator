@@ -383,21 +383,26 @@ directory, so the report is always a single file.
 md_fn <- tempfile(fileext = ".md")
 seqAnnotReport(st, md_fn, title = "SnpEff annotation of chromosome 22",
     verbose = FALSE)
-
-cat(head(readLines(md_fn), 22), sep = "\n")
 ```
 
-```{r annot-report-html, eval = FALSE}
-# the same content as a self-contained HTML file
-seqAnnotReport(st, "annot_summary.html",
-    title = "SnpEff annotation of chromosome 22")
+Since the report is written in Markdown, it can be embedded in an R Markdown
+document such as this vignette: print its lines in a chunk with the option
+`results = "asis"`, and they are rendered as part of the document. The first
+three sections of the report are shown below, with the headings demoted by
+two levels so that they fit under this subsection:
+
+```{r annot-report-embed, results = "asis"}
+txt <- readLines(md_fn)
+txt <- txt[seq_len(grep("^## ", txt)[4L] - 1L)]   # the title and 3 sections
+cat(sub("^#", "###", txt), sep = "\n")
 ```
 
-The HTML charts are inline SVG and the Markdown charts are drawn with block
-characters. If the charts should be real plots instead, e.g., to restyle
-them or to fold the report into a larger document, the `rmd` format writes an R
-Markdown source in which the counts are embedded as R code and the charts are
-produced by `barplot()` at knit time:
+The whole report is embedded in the same way by printing all of its lines.
+
+The Markdown charts are drawn with block characters. If the charts should be
+real plots instead, e.g., to restyle them or to fold the report into a larger
+document, the `rmd` format writes an R Markdown source in which the counts are
+embedded as R code and the charts are produced by `barplot()` at knit time:
 
 ```{r annot-report-rmd, eval = FALSE}
 seqAnnotReport(st, "annot_summary.Rmd",
