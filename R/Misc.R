@@ -131,7 +131,7 @@ seqValueCounts <- function(gdsfile, varnm, use_info=TRUE, FUN=NULL,
             {
                 fn <- gdsfile[i]
                 if (isTRUE(verbose))
-                    cat("[", i, "/", length(gdsfile), "] ", sep="")
+                    message("[", i, "/", length(gdsfile), "] ", appendLF=FALSE)
                 seqValueCounts(fn, varnm, use_info=use_info, FUN=FUN,
                     per_variant=per_variant, parallel=parallel, bsize=bsize,
                     verbose=verbose, ...)

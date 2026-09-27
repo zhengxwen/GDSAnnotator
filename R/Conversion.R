@@ -11,8 +11,9 @@
 # Package-wide variables
 .packageEnv <- new.env(parent=emptyenv())
 
-# Internal functions
-.cat <- function(...) cat(..., "\n", sep="")
+# Internal functions: show a line of progress information, as a message
+#   (i.e., on stderr, and it can be suppressed by suppressMessages())
+.cat <- function(...) message(...)
 
 tm <- function() strftime(Sys.time(), "%Y-%m-%d %H:%M:%S")
 
@@ -145,7 +146,7 @@ seqToGDS_gnomAD <- function(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
             put.attr.gdsn(data_nodes[[i]], "Description", nm_desp[i])
     }
     # block-by-block processing
-    if (verbose) cat("Processing:\n")
+    if (verbose) message("Processing:")
     seqBlockApply(f, nm_root, function(bk)
     {
         if (inherits(bk, "SeqVarDataList"))

@@ -102,7 +102,8 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
             } else {
                 nd <- suppressWarnings(append.gdsn(index.gdsn(nd_root, nm), v))
             }
-            if (verbose) { cat("    "); print(nd) }
+            if (verbose)
+                message("    ", paste(capture.output(nd), collapse="\n    "))
         }
         remove(df)
     }
@@ -133,7 +134,7 @@ seqToGDS_FAVOR <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
         seqRecompress(out_fn, compress=compress, verbose=verbose)
     } else {
         if (verbose)
-            cat("Optimize the access efficiency ...\n")
+            message("Optimize the access efficiency ...")
         closefn.gds(outfile)
         cleanup.gds(out_fn, verbose=verbose)
     }
@@ -268,7 +269,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
     {
         fn <- fn_in_tar[i_fn]
         if (verbose)
-            cat("Loading file (", i_fn, "):\n    ", fn, sep="")
+            message("Loading file (", i_fn, "):\n    ", fn, appendLF=FALSE)
         InF <- tar_open(tar_fn, fn, tar_cmd)
         # check the header
         hr <- readLines(InF, n=1L)
@@ -394,7 +395,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
             delete.gdsn(index.gdsn(outfile, paste0("annotation/info/@", nm)))
         }
     }
-    if (verbose) cat("Loading Done.\n")
+    if (verbose) message("Loading Done.")
 
     # recompress?
     on.exit()
@@ -407,7 +408,7 @@ seqToGDS_FAVOR_tar <- function(tar_fn, out_fn, fn_in_tar=NULL,
         seqRecompress(out_fn, compress=compress, verbose=verbose)
     } else {
         if (verbose)
-            cat("Optimize the access efficiency ...\n")
+            message("Optimize the access efficiency ...")
         closefn.gds(outfile)
         cleanup.gds(out_fn, verbose=verbose)
     }

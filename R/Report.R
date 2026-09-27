@@ -428,7 +428,7 @@ seqAnnotStat <- function(gdsfile, parallel=FALSE, bsize=100000L, verbose=TRUE)
             lst <- lapply(seq_along(gdsfile), function(i)
             {
                 if (isTRUE(verbose))
-                    cat("[", i, "/", length(gdsfile), "] ", sep="")
+                    message("[", i, "/", length(gdsfile), "] ", appendLF=FALSE)
                 seqAnnotStat(gdsfile[i], parallel=parallel, bsize=bsize,
                     verbose=verbose)
             })
@@ -493,17 +493,20 @@ seqAnnotStat <- function(gdsfile, parallel=FALSE, bsize=100000L, verbose=TRUE)
 }
 
 
+# the print method writes to the standard output, unlike the progress
+#   information shown by .cat()
 print.SeqAnnotStat <- function(x, ...)
 {
-    .cat("SeqAnnotStat [", x$source, "]")
-    .cat("    file: ", paste(basename(x$file), collapse=", "))
-    .cat("    # of variants: ", format(x$n_variant, big.mark=","))
+    p <- function(...) cat(..., "\n", sep="")
+    p("SeqAnnotStat [", x$source, "]")
+    p("    file: ", paste(basename(x$file), collapse=", "))
+    p("    # of variants: ", format(x$n_variant, big.mark=","))
     if (!is.null(x$counts$n_annot))
     {
-        .cat("    # of annotation records: ",
+        p("    # of annotation records: ",
             format(x$counts$n_annot[[1L]], big.mark=","))
     }
-    .cat("    statistics: ", paste(names(x$counts), collapse=", "))
+    p("    statistics: ", paste(names(x$counts), collapse=", "))
     invisible(x)
 }
 

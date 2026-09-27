@@ -3,7 +3,7 @@
 import(methods)
 import(gdsfmt)
 import(SeqArray)
-importFrom(utils, head, read.csv, untar)
+importFrom(utils, head, read.csv, untar, capture.output)
 importFrom(IRanges, IRanges, which, start)
 importFrom(S4Vectors, nrun, DataFrame, Rle, runLength, runValue)
 importFrom(GenomicRanges, GRanges, GRangesList, seqnames)
