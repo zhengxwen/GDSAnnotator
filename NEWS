@@ -18,8 +18,17 @@ CHANGES IN VERSION 0.99.1
     o new 'bsize' in `seqAnnotate()` and `seqAnnotateGDS()` to split the
       variants into blocks when 'add_to_gds' is TRUE or a file name: the
       annotation data are loaded and written block by block, so the memory
-      usage no longer depends on the total number of variants (requiring the
-      block writing in `SeqArray::seqAddValue()`, SeqArray_v1.53.2)
+      usage no longer depends on the total number of variants; the values of
+      a block are kept as vectors instead of a list with one element per
+      variant
+
+    o new 'parallel' in `seqAnnotateGDS()` and in `seqAnnotate()` for a
+      SeqArray GDS file, when 'add_to_gds' is TRUE or a file name: the
+      annotation variables are distributed to R processes started by
+      `parallel::makeCluster()` (no forking), each process writes one
+      variable at a time to a temporary GDS file, and the variables are
+      copied to the output file in the order of 'varnm', so that the output
+      does not depend on 'parallel'
 
     o `seqAnnotate()` accepts the `VCF` objects of the package
       VariantAnnotation (CollapsedVCF and ExpandedVCF), annotating one row

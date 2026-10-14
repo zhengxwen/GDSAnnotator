@@ -256,6 +256,17 @@ seqAnnotate(seqOpen(geno_gds), annot_gds, varnm,
     add_to_gds = "my_wgs_geno_annotated.gds")
 ```
 
+With `parallel`, the annotation variables are written by several R processes,
+one variable at a time per process, and the output file is the same as with
+serial processing. The processes are started by `parallel::makeCluster()`
+instead of forking, and each of them needs its own memory, so the number of
+processes should fit the memory of the job:
+
+```{r annot-gds-parallel, eval = FALSE}
+seqAnnotateGDS(geno_gds, annot_gds, varnm,
+    add_to_gds = "my_wgs_geno_annotated.gds", parallel = 2L)
+```
+
 # Converting annotation sources to GDS
 
 `GDSAnnotator` provides dedicated importers for common annotation sources.

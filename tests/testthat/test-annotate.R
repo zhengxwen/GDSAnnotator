@@ -119,6 +119,126 @@ test_that("a small block size gives the same output as a single block", {
         expect_equal(get_out(bs), single)
 })
 
+# all the nodes under 'annotation/info' (including the hidden index nodes):
+#   names in order, data, storage modes and attributes
+.info_nodes <- function(fn)
+{
+    f <- openfn.gds(fn, allow.duplicate=TRUE)
+    on.exit(closefn.gds(f))
+    nd <- index.gdsn(f, "annotation/info")
+    nm <- ls.gdsn(nd, recursive=TRUE, include.hidden=TRUE, include.dirs=FALSE)
+    v <- lapply(nm, function(s)
+    {
+        n <- index.gdsn(nd, s)
+        list(data=read.gdsn(n), storage=objdesp.gdsn(n)$storage,
+            attr=get.attr.gdsn(n))
+    })
+    names(v) <- nm
+    v
+}
+
+test_that("parallel writes the same nodes as serial processing", {
+    snpeff <- ex_file("example_wgs_sites_chr22_snpeff.gds")
+    f <- SeqArray::seqOpen(snpeff, allow.duplicate=TRUE)
+    chr <- seqGetData(f, "chromosome"); pos <- seqGetData(f, "position")
+    ref <- seqGetData(f, "$ref"); alt <- seqGetData(f, "$alt")
+    SeqArray::seqClose(f)
+    # a variant not in the annotation file, and one on another chromosome
+    geno <- make_geno_gds(c(chr, "22", "X"), c(pos, 1L, 100L),
+        c(ref, "A", "A"), c(alt, "T", "T"))
+    out <- replicate(4L, tempfile(fileext=".gds"))
+    on.exit(unlink(c(geno, out), force=TRUE))
+    # a float, a flag, lists of strings, integers or floats with up to 25
+    #   values per variant, a list with at most one value per variant, and
+    #   a factor
+    nm <- c("AF", "IMPUTED", "ANN.list/Gene_Name", "ANN.list/Rank",
+        "NMD.list/Gene_Name", "LOF.list/Percent_of_transcripts_affected",
+        ":filter")
+    # to a new file under 'root', with several blocks
+    cl <- parallel::makeCluster(2L)
+    on.exit(parallel::stopCluster(cl), add=TRUE)
+    seqAnnotateGDS(geno, snpeff, varnm=nm, add_to_gds=out[1L], root="ann",
+        bsize=7L, verbose=FALSE)
+    seqAnnotateGDS(geno, snpeff, varnm=nm, add_to_gds=out[2L], root="ann",
+        bsize=7L, parallel=cl, verbose=FALSE)
+    a <- .info_nodes(out[1L])
+    expect_length(a, 2L * length(nm))
+    expect_identical(.info_nodes(out[2L]), a)
+    # in place, and again with the existing nodes replaced at their positions
+    #   and the variables in another order
+    file.copy(geno, out[3:4])
+    for (v in list(nm, rev(nm)[-1L]))
+    {
+        seqAnnotateGDS(out[3L], snpeff, varnm=v, add_to_gds=TRUE, bsize=50L,
+            verbose=FALSE)
+        seqAnnotateGDS(out[4L], snpeff, varnm=v, add_to_gds=TRUE, bsize=50L,
+            parallel=2L, verbose=FALSE)
+    }
+    a <- .info_nodes(out[3L])
+    expect_length(a, 2L * length(nm))
+    expect_identical(.info_nodes(out[4L]), a)
+    # no temporary file left
+    expect_length(list.files(tempdir(), "\\.gds\\.(tmp[0-9]+_|map)"), 0L)
+    expect_error(seqAnnotateGDS(geno, snpeff, varnm=nm, add_to_gds=out[1L],
+        parallel="2", verbose=FALSE), "parallel")
+})
+
+test_that("the values are written as stored, and a factor stays a factor", {
+    # read the variants and the variables 'nm' of a GDS file
+    .read <- function(fn, nm=character())
+    {
+        f <- SeqArray::seqOpen(fn, allow.duplicate=TRUE)
+        on.exit(SeqArray::seqClose(f))
+        nm <- c(chr="chromosome", pos="position", ref="$ref", alt="$alt", nm)
+        lapply(nm, function(s) seqGetData(f, s, .padNA=FALSE))
+    }
+    out <- replicate(3L, tempfile(fileext=".gds"))
+    on.exit(unlink(out, force=TRUE))
+    # SnpEff: all the variants and one variant not found
+    snpeff <- ex_file("example_wgs_sites_chr22_snpeff.gds")
+    s <- .read(snpeff, c(nmd="annotation/info/NMD.list/Gene_Name"))
+    geno <- make_geno_gds(c(s$chr, "22"), c(s$pos, 1L), c(s$ref, "A"),
+        c(s$alt, "T"))
+    on.exit(unlink(geno, force=TRUE), add=TRUE)
+    seqAnnotateGDS(geno, snpeff, varnm=c("AF", "NMD.list/Gene_Name"),
+        add_to_gds=out[1L], verbose=FALSE)
+    a <- .read(out[1L], c(nmd="annotation/info/NMD.list/Gene_Name",
+        af="annotation/info/AF"))
+    # a variant without value in the annotation file, or not found, has no
+    #   value in a list variable, instead of a missing value
+    expect_identical(a$nmd$length, c(s$nmd$length, 0L))
+    expect_identical(a$nmd$data, s$nmd$data)
+    # one value per variant in a vector variable, missing if not found
+    expect_identical(a$af$length, rep(1L, length(s$pos) + 1L))
+    expect_true(is.na(a$af$data[length(a$af$data)]))
+    # the filters of two files with different levels, and a variant not found
+    annot <- c(ex_file("gnomad.genomes.v4.chr22_sub.gds"), favor_gds())
+    v <- lapply(annot, .read, nm=c(filter="annotation/filter"))
+    i1 <- seq(1L, length(v[[1L]]$pos), by=10L)
+    i2 <- seq(5L, length(v[[2L]]$pos), by=50L)
+    geno2 <- make_geno_gds("22", c(v[[1L]]$pos[i1], v[[2L]]$pos[i2], 1L),
+        c(v[[1L]]$ref[i1], v[[2L]]$ref[i2], "A"),
+        c(v[[1L]]$alt[i1], v[[2L]]$alt[i2], "T"))
+    on.exit(unlink(geno2, force=TRUE), add=TRUE)
+    seqAnnotateGDS(geno2, annot, varnm=":filter", add_to_gds=out[2L],
+        verbose=FALSE)
+    seqAnnotateGDS(geno2, annot, varnm=":filter", add_to_gds=out[3L],
+        bsize=3L, verbose=FALSE)
+    expect_identical(.info_nodes(out[3L]), .info_nodes(out[2L]))
+    flt <- .read(out[2L], c(filter="annotation/info/.filter"))$filter
+    expect_s3_class(flt$data, "factor")
+    expect_identical(levels(flt$data),
+        union(levels(v[[1L]]$filter), levels(v[[2L]]$filter)))
+    # the filter of each variant in the file where it is found
+    f <- SeqArray::seqOpen(geno2, allow.duplicate=TRUE)
+    loc <- seqAnnotate(f, annot, varnm=NULL, verbose=FALSE)
+    SeqArray::seqClose(f)
+    fi <- as.integer(loc$file_idx)
+    expect_true(all(c(1L, 2L) %in% fi[!is.na(loc$variant_idx)]))
+    expect_identical(as.character(flt$data), vapply(seq_along(fi),
+        function(k) as.character(v[[fi[k]]]$filter[loc$variant_idx[k]]), ""))
+})
+
 test_that("varnm can be missing (all annotations) or NULL (locate only)", {
     v <- .sample_variants(3L)
     snp <- paste(v$chr, v$pos, v$ref, v$alt, sep="-")

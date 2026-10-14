@@ -288,14 +288,470 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
 }
 
 
+#######################################################################
+# Write the annotations of the variants to a GDS file block by block
+
+# split 'n' variants into blocks of 'bsize' variants: the index of the first
+#   variant and the number of variants of each block
+.blocks <- function(n, bsize)
+{
+    nblock <- max(1L, as.integer(ceiling(n / bsize)))
+    st <- as.double(seq_len(nblock) - 1L) * bsize + 1
+    st <- as.integer(pmin(st, n + 1))
+    list(st=st, cnt=diff(c(st, n + 1L)))
+}
+
+# whether 'x' returned by seqGetData() is a vector with one value per variant
+#   or a SeqVarDataList object with a vector of data
+.is_vec <- function(x) is.atomic(x) && is.null(dim(x))
+.is_dl <- function(x) inherits(x, "SeqVarDataList") && is.null(dim(x$data))
+
+# the values for the variants 'k' (the indices in 'x', NA for a variant not
+#   found) in the compact list(length, data) representation, where 'x' is a
+#   vector or a SeqVarDataList object returned by seqGetData(, .padNA=FALSE):
+#   the values of a SeqVarDataList object are kept as they are stored, and a
+#   variant not found has no value; a vector has one value per variant, and a
+#   variant not found has a missing value
+.annot_subset <- function(x, k)
+{
+    in_order <- !anyNA(k) && !is.unsorted(k, strictly=TRUE)
+    if (.is_dl(x))
+    {
+        len <- x$length
+        if (in_order && length(k)==length(len))
+            return(list(length=len, data=x$data))
+        n <- len[k]
+        n[is.na(n)] <- 0L
+        j <- which(n > 0L)
+        # the offset of the values of each variant in x$data
+        off <- c(0, cumsum(as.double(len)))[k[j]]
+        list(length=n, data=x$data[rep.int(off, n[j]) + sequence(n[j])])
+    } else {
+        if (!in_order || length(k)!=length(x)) x <- x[k]
+        list(length=rep.int(1L, length(k)), data=x)
+    }
+}
+
+# the values of the GDS variable 'nm' in the annotation file 'f' for the
+#   variants 'ii' (the indices in 'f', NA for a variant not found, possibly
+#   unsorted and repeated)
+.annot_get <- function(f, nm, ii)
+{
+    k <- seqSetFilter(f, variant.sel=ii, ret.idx=TRUE, warn=FALSE,
+        verbose=FALSE)$variant_idx
+    x <- NULL
+    if (length(objdesp.gdsn(index.gdsn(f, nm))$dim) == 1L)
+        x <- seqGetData(f, nm, .padNA=FALSE)
+    if (.is_vec(x) || .is_dl(x))
+        return(.annot_subset(x, k))
+    # other forms (e.g., a matrix): one list element per variant
+    v <- seqGetData(f, nm, .tolist=TRUE)[k]
+    v <- lapply(v, function(x) unlist(x, use.names=FALSE))
+    list(length=lengths(v), data=unlist(v, use.names=FALSE))
+}
+
+# the value of each variable for no variant as returned by seqGetData(), which
+#   gives the type of the values of the variants not found; NULL if
+#   it is neither a vector nor a SeqVarDataList object (e.g., a matrix), or if
+#   no file has the variable
+.annot_template <- function(annot_gds, varnm)
+{
+    ans <- vector("list", length(varnm))
+    empty <- logical(length(annot_gds))  # TRUE if no variant is selected
+    for (i in seq_along(varnm))
+    {
+        for (j in seq_along(annot_gds))
+        {
+            f <- annot_gds[[j]]
+            if (is.null(index.gdsn(f, varnm[i], silent=TRUE))) next
+            if (!empty[j])
+            {
+                seqSetFilter(f, variant.sel=integer(), warn=FALSE,
+                    verbose=FALSE)
+                empty[j] <- TRUE
+            }
+            x <- seqGetData(f, varnm[i], .padNA=FALSE)
+            if (.is_vec(x) || .is_dl(x)) ans[i] <- list(x)
+            break
+        }
+    }
+    ans
+}
+
+# the levels of each factor variable (e.g., "annotation/filter") in all the
+#   annotation files, in the order of the files; NULL if it is not a factor
+.annot_levels <- function(annot_gds, varnm)
+{
+    lapply(varnm, function(nm)
+    {
+        lv <- NULL
+        for (f in annot_gds)
+        {
+            n <- index.gdsn(f, nm, silent=TRUE)
+            if (is.null(n)) next
+            a <- get.attr.gdsn(n)
+            if ("factor" %in% a$R.class)
+                lv <- union(lv, as.character(a$R.levels))
+        }
+        lv
+    })
+}
+
+# the values of the GDS variable 'nm' for a block of variants in the compact
+#   list(length, data) representation, where 'fi' and 'vi' are the indices of
+#   the annotation file and of the variant in that file (NA if not found),
+#   get_file(i) returns the i-th annotation file, and 'tmpl' is the value of
+#   'nm' for no variant (see .annot_template())
+.annot_block <- function(get_file, nm, fi, vi, tmpl)
+{
+    found <- !is.na(vi)
+    if (!any(found) && (!is.null(tmpl) || !length(vi)))
+    {
+        # no variant found, no file to read
+        v <- if (length(vi)) .annot_subset(tmpl, vi) else
+            list(length=integer(), data=NULL)
+    } else {
+        # a variant not found joins the run of the previous variant found (or
+        #   of the first one), so that a file is read once per run
+        if (any(found) && !all(found))
+            fi <- fi[which(found)][pmax(cumsum(found), 1L)]
+        # the runs of consecutive variants in the same file
+        n <- length(fi)
+        ed <- c(which(fi[-1L] != fi[-n]), n)
+        st <- c(1L, ed[-length(ed)] + 1L)
+        v <- lapply(seq_along(st), function(j)
+            .annot_get(get_file(fi[st[j]]), nm, vi[seq.int(st[j], ed[j])]))
+        if (length(v) == 1L)
+        {
+            v <- v[[1L]]
+        } else {
+            v <- list(
+                length=unlist(lapply(v, `[[`, "length"), use.names=FALSE),
+                data=unlist(lapply(v, `[[`, "data"), use.names=FALSE))
+        }
+    }
+    structure(v, class="SeqVarDataList")
+}
+
+
+#######################################################################
+# Write the annotation variables in parallel: each process writes one
+#   variable at a time to a temporary GDS file, and the main process copies
+#   the finished variables to the output file in the order of 'varnm'
+
+# the number of processes for 'parallel'
+.num_parallel <- function(parallel)
+{
+    if (is.null(parallel) || isFALSE(parallel)) return(1L)
+    if (inherits(parallel, "cluster")) return(length(parallel))
+    if (isTRUE(parallel))
+    {
+        n <- detectCores() - 1L
+        return(if (is.na(n) || n < 2L) 2L else n)
+    }
+    if (is.numeric(parallel) && length(parallel)==1L && !is.na(parallel) &&
+        parallel >= 1)
+    {
+        return(as.integer(parallel))
+    }
+    stop("'parallel' should be FALSE, TRUE, a positive integer or ",
+        "a cluster object.")
+}
+
+# the total compressed size of each variable in the annotation files, so that
+#   the processes start with the largest variables
+.annot_size <- function(annot_gds, varnm)
+{
+    vapply(varnm, function(nm)
+    {
+        s <- 0
+        for (f in annot_gds)
+        {
+            for (p in c(nm, paste0(dirname(nm), "/@", basename(nm))))
+            {
+                n <- index.gdsn(f, p, silent=TRUE)
+                if (!is.null(n))
+                {
+                    z <- objdesp.gdsn(n)$size
+                    if (isTRUE(is.finite(z))) s <- s + z
+                }
+            }
+        }
+        s
+    }, 0, USE.NAMES=FALSE)
+}
+
+# write the file and variant indices of the variants to a temporary GDS file,
+#   which each process reads block by block, and return the last block in
+#   which each annotation file has a variant found (0 if none)
+.ann_map_write <- function(fn, file_ids, variant_idx, blk, nfile)
+{
+    f <- createfn.gds(fn)
+    on.exit(closefn.gds(f))
+    n1 <- add.gdsn(f, "file_idx", storage="int32", valdim=0L,
+        compress="LZ4_RA")
+    n2 <- add.gdsn(f, "variant_idx", storage="int32", valdim=0L,
+        compress="LZ4_RA")
+    last <- integer(nfile)
+    for (k in seq_along(blk$st))
+    {
+        s <- seq.int(blk$st[k], length.out=blk$cnt[k])
+        fi <- as.integer(file_ids[s])
+        vi <- variant_idx[s]
+        append.gdsn(n1, fi)
+        append.gdsn(n2, vi)
+        last[unique(fi[!is.na(vi)])] <- k
+    }
+    readmode.gdsn(n1)
+    readmode.gdsn(n2)
+    last
+}
+
+# the VCF type of a GDS node
+.vcf_type <- function(node)
+{
+    switch(as.character(objdesp.gdsn(node)$type[1L]),
+        Raw="Integer", Integer="Integer", Real="Float", Factor="String",
+        String="String", Logical="Flag", ".")
+}
+
+# make the integer node 'n' a factor with the levels 'levels' (if not NULL),
+#   in the same way as gdsfmt stores a factor
+.put_levels <- function(n, levels)
+{
+    if (!is.null(levels))
+    {
+        put.attr.gdsn(n, "R.class", "factor")
+        put.attr.gdsn(n, "R.levels", levels)
+    }
+    invisible()
+}
+
+# write the blocks of values returned by gen(k) (NULL if no more block) to
+#   the node 'nm' and its index node '@nm' in the folder 'node', in the same
+#   way as SeqArray::seqAddValue() for "annotation/info/nm" with its default
+#   arguments, except that a factor is stored as the integer codes of
+#   'levels' (the levels in all the annotation files) instead of strings, and
+#   that the type of 'tmpl' (see .annot_template()) is kept when there is no
+#   value at all; it is used with and without 'parallel', so the output does
+#   not depend on it
+.ann_add_stream <- function(node, nm, gen, nvar, tmpl=NULL, levels=NULL,
+    compress="LZMA_RA")
+{
+    # the storage mode of the values 'x'
+    stmode <- function(x)
+    {
+        s <- if (is.factor(x) || is.character(x)) "string" else storage.mode(x)
+        if (identical(s, "double")) "float32" else s
+    }
+    n <- nidx <- st <- NULL
+    cnt <- 0
+    pending <- list()  # the lengths of the leading blocks without value
+    k <- 0L
+    repeat {
+        k <- k + 1L
+        v <- gen(k)
+        if (is.null(v)) break
+        len <- v$length
+        len[is.na(len) | len<0L] <- 0L
+        dat <- v$data
+        if (is.null(dat)) dat <- integer()
+        if (!is.null(levels)) dat <- match(as.character(dat), levels)
+        remove(v)
+        cnt <- cnt + length(len)
+        if (is.null(n))
+        {
+            if (!length(dat))
+            {
+                pending[[length(pending) + 1L]] <- len
+                next
+            }
+            # the first block with values defines the storage mode
+            st <- stmode(dat)
+            n <- add.gdsn(node, nm, dat, storage=st, compress=compress,
+                replace=TRUE)
+            .put_levels(n, levels)
+            nidx <- add.gdsn(node, paste0("@", nm),
+                unlist(pending, use.names=FALSE), storage="int",
+                compress=compress, replace=TRUE, visible=FALSE)
+            pending <- list()
+            append.gdsn(nidx, len)
+        } else {
+            if (is.factor(dat)) dat <- as.character(dat)
+            if (length(dat) && is.character(dat) != (st == "string"))
+            {
+                stop("The data block ", k,
+                    " does not have the same data type as the previous ones.")
+            }
+            if (length(dat)) append.gdsn(n, dat)
+            append.gdsn(nidx, len)
+        }
+        remove(len, dat)
+    }
+    if (is.null(n))
+    {
+        # no value at all in any block: the type of 'tmpl'
+        dat <- integer()
+        if (is.null(levels) && .is_dl(tmpl))
+            dat <- tmpl$data[0L]
+        n <- add.gdsn(node, nm, dat, storage=stmode(dat), compress=compress,
+            replace=TRUE)
+        .put_levels(n, levels)
+        nidx <- add.gdsn(node, paste0("@", nm),
+            unlist(pending, use.names=FALSE), storage="int",
+            compress=compress, replace=TRUE, visible=FALSE)
+    }
+    readmode.gdsn(n)
+    readmode.gdsn(nidx)
+    if (cnt != nvar)
+        stop("The total number of variants should be ", nvar, ", but ", cnt)
+    put.attr.gdsn(n, "Number", ".")
+    put.attr.gdsn(n, "Type", .vcf_type(n))
+    put.attr.gdsn(n, "Description", "")
+    digest.gdsn(n, algo="md5", action="add")
+    digest.gdsn(nidx, algo="md5", action="add")
+    invisible(n)
+}
+
+# run in a process for the j-th job: write the i-th variable (i = ord[j]) to
+#   the temporary file tmp_fn[i]; the variants are read from the file 'map_fn'
+#   block by block, and an annotation file is opened when needed and closed
+#   after the last block using it, so that the memory usage depends neither
+#   on the total number of variants nor on the number of annotation files
+.ann_par_var <- function(j, ord, map_fn, annot_fn, last_blk, varnm, tmpl,
+    lv, bsize, tmp_fn)
+{
+    i <- ord[j]
+    mf <- openfn.gds(map_fn, allow.duplicate=TRUE)
+    on.exit(closefn.gds(mf))
+    n_fi <- index.gdsn(mf, "file_idx")
+    n_vi <- index.gdsn(mf, "variant_idx")
+    nvar <- objdesp.gdsn(n_vi)$dim
+    blk <- .blocks(nvar, bsize)
+    # the opened annotation files, named by their index
+    e <- new.env(parent=emptyenv())
+    on.exit(for (s in ls(e)) seqClose(e[[s]]), add=TRUE)
+    get_file <- function(k)
+    {
+        s <- as.character(k)
+        if (is.null(e[[s]]))
+            assign(s, seqOpen(annot_fn[k], allow.duplicate=TRUE), envir=e)
+        e[[s]]
+    }
+    gen <- function(k)
+    {
+        if (k > length(blk$st)) return(NULL)  # no more block
+        st <- blk$st[k]; cnt <- blk$cnt[k]
+        v <- .annot_block(get_file, varnm[i],
+            read.gdsn(n_fi, start=st, count=cnt),
+            read.gdsn(n_vi, start=st, count=cnt), tmpl[[i]])
+        # close the files not needed by the remaining blocks
+        for (s in ls(e))
+        {
+            if (last_blk[as.integer(s)] <= k)
+            {
+                seqClose(e[[s]])
+                rm(list=s, envir=e)
+            }
+        }
+        v
+    }
+    f <- createfn.gds(tmp_fn[i])
+    on.exit(closefn.gds(f), add=TRUE)
+    # suppress the warnings "Missing characters are converted to" as in the
+    #   serial processing, since NA is not allowed in a GDS string variable
+    suppressWarnings(.ann_add_stream(f$root, "data", gen, nvar, tmpl[[i]],
+        lv[[i]]))
+    i
+}
+
+# copy the variable written by .ann_par_var() in the file 'fn' to 'path' in
+#   the output file, replacing the existing node at the same position as
+#   add.gdsn(, replace=TRUE) does in .ann_add_stream()
+.ann_copy_node <- function(gdsfile, path, fn)
+{
+    f <- openfn.gds(fn, allow.duplicate=TRUE)
+    on.exit(closefn.gds(f))
+    folder <- index.gdsn(gdsfile, dirname(path))
+    nm <- basename(path)
+    for (s in c("", "@"))
+    {
+        src <- index.gdsn(f, paste0(s, "data"))
+        old <- index.gdsn(folder, paste0(s, nm), silent=TRUE)
+        if (is.null(old))
+        {
+            copyto.gdsn(folder, src, paste0(s, nm))
+        } else {
+            tmp <- paste0(s, nm, ".tmp")
+            while (!is.null(index.gdsn(folder, tmp, silent=TRUE)))
+                tmp <- paste0(tmp, "_")
+            copyto.gdsn(folder, src, tmp)
+            moveto.gdsn(index.gdsn(folder, tmp), old, relpos="replace+rename")
+        }
+    }
+    invisible()
+}
+
+# write the variables 'varnm' to 'rootnm/colnm' in the output file with
+#   'npar' processes, starting with the largest variables (see 'size')
+.ann_par_write <- function(outgds, rootnm, colnm, varnm, tmpl, lv, size,
+    map_fn, annot_fn, last_blk, bsize, parallel, npar, verbose)
+{
+    # the temporary files of the variables, next to the output file
+    fn <- outgds$filename
+    tmp_fn <- tempfile(paste0(basename(fn), ".tmp", seq_along(varnm), "_"),
+        dirname(fn), ".gds")
+    on.exit(unlink(c(map_fn, tmp_fn), force=TRUE))
+    # the processes are started with makeCluster() instead of forking, so
+    #   they do not share the memory pages of the current process
+    cl <- parallel
+    if (!inherits(cl, "cluster"))
+    {
+        cl <- makeCluster(npar)
+        on.exit(stopCluster(cl), add=TRUE)
+        clusterCall(cl, .libPaths, .libPaths())
+    }
+    if (verbose)
+        .cat("    ", length(varnm), " variables, ", npar, " processes")
+    # copy each finished variable as soon as the previous ones are copied
+    st <- new.env(parent=emptyenv())
+    st$done <- logical(length(varnm))
+    st$i <- 1L
+    combine <- function(i)
+    {
+        st$done[i] <- TRUE
+        while (st$i <= length(varnm) && st$done[st$i])
+        {
+            j <- st$i
+            .ann_copy_node(outgds, paste0(rootnm, "/", colnm[j]), tmp_fn[j])
+            unlink(tmp_fn[j], force=TRUE)
+            if (verbose)
+            {
+                .cat("    added ", j, "/", length(varnm), " ",
+                    sQuote(colnm[j]), " (", tm(), ")")
+            }
+            st$i <- j + 1L
+        }
+        invisible()
+    }
+    seqParallel(cl, length(varnm), FUN=.ann_par_var, split="none",
+        .combine=combine, ord=order(size, decreasing=TRUE), map_fn=map_fn,
+        annot_fn=annot_fn, last_blk=last_blk, varnm=varnm, tmpl=tmpl, lv=lv,
+        bsize=bsize, tmp_fn=tmp_fn)
+    invisible()
+}
+
+
 # Annotate a GDS file
 ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
-    no_sample=TRUE, root="", cleanup=FALSE, bsize=1000000L, ..., verbose=TRUE)
+    no_sample=TRUE, root="", cleanup=FALSE, bsize=1000000L, parallel=FALSE,
+    ..., verbose=TRUE)
 {
     # check
     stopifnot(inherits(object, "SeqVarGDSClass"))
     stopifnot(is.numeric(bsize), length(bsize)==1L, !is.na(bsize), bsize>0L)
     bsize <- as.double(bsize)
+    npar <- .num_parallel(parallel)
     stopifnot(is.logical(add_to_gds) || is.character(add_to_gds),
         length(add_to_gds)==1L, !is.na(add_to_gds))
     if (isTRUE(add_to_gds))
@@ -399,38 +855,49 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         file_ids <- map$file_idx
         if (!inherits(file_ids, "Rle"))
             file_ids <- Rle(as.integer(file_ids))
-        # split the variants into blocks to reduce the memory usage: a list
-        #   of n_total elements (as returned by .tolist=TRUE) needs much more
-        #   memory than the annotation data itself
-        nblock <- max(1L, as.integer(ceiling(n_total / bsize)))
-        blk_st <- as.double(seq_len(nblock) - 1L) * bsize + 1
-        blk_st <- as.integer(pmin(blk_st, n_total + 1))
-        blk_cnt <- diff(c(blk_st, n_total + 1L))
+        # split the variants into blocks to reduce the memory usage, and the
+        #   values of a block are kept as vectors instead of a list with one
+        #   element per variant (which needs much more memory)
+        blk <- .blocks(n_total, bsize)
+        nblock <- length(blk$st)
+        # the value of each variable for no variant, and the factor levels
+        tmpl <- .annot_template(annot_gds, varnm)
+        lv <- .annot_levels(annot_gds, varnm)
+        npar <- min(npar, length(varnm))
+        if (npar > 1L)
+        {
+            # each process opens the annotation files again
+            annot_fn <- normalizePath(vapply(annot_gds,
+                function(f) f$filename, ""))
+            size <- .annot_size(annot_gds, varnm)
+            if (if_close_gds)
+            {
+                .close_annot_gds(annot_gds)
+                annot_gds <- list()  # not to be closed again on exit
+            }
+            # the processes read the file and variant indices from a file
+            fn <- outgds$filename
+            map_fn <- tempfile(paste0(basename(fn), ".map"), dirname(fn),
+                ".gds")
+            on.exit(unlink(map_fn, force=TRUE), add=TRUE)
+            last_blk <- .ann_map_write(map_fn, file_ids, map$variant_idx,
+                blk, length(annot_fn))
+            remove(map, file_ids)
+            .ann_par_write(outgds, rootnm, colnm, varnm, tmpl, lv, size,
+                map_fn, annot_fn, last_blk, bsize, parallel, npar, verbose)
+            return(invisible())
+        }
         dot_block <- if (nblock > 1L)
             unique(as.integer(round(seq(1L, nblock,
                 length.out=min(10L, nblock))))) else integer()
         # get the values of the variable 'varnm[i]' for the k-th block, in
         #   the compact list(length, data) representation
+        get_file <- function(j) annot_gds[[j]]
         get_block <- function(i, k)
         {
-            fi <- file_ids[seq.int(blk_st[k], length.out=blk_cnt[k])]  # Rle
-            vi <- map$variant_idx[seq.int(blk_st[k], length.out=blk_cnt[k])]
-            rl <- runLength(fi); rv <- runValue(fi)
-            # starting offset of each run (1, rl1+1, rl1+rl2+1, ...)
-            ost <- cumsum(c(1L, rl))
-            v <- lapply(seq_along(rv), function(j)
-            {
-                f <- annot_gds[[rv[j]]]
-                ii <- vi[seq.int(ost[j], length.out=rl[j])]
-                ii <- seqSetFilter(f, variant.sel=ii, ret.idx=TRUE,
-                    warn=FALSE, verbose=FALSE)$variant_idx
-                seqGetData(f, varnm[i], .tolist=TRUE)[ii]
-            })
-            v <- if (length(rv) == 1L) v[[1L]] else
-                unlist(v, recursive=FALSE, use.names=FALSE)
-            v <- lapply(v, function(x) unlist(x, use.names=FALSE))
-            structure(list(length=lengths(v),
-                data=unlist(v, use.names=FALSE)), class="SeqVarDataList")
+            s <- seq.int(blk$st[k], length.out=blk$cnt[k])
+            .annot_block(get_file, varnm[i], as.integer(file_ids[s]),
+                map$variant_idx[s], tmpl[[i]])
         }
         # add each annotation variable
         for (i in seq_along(varnm))
@@ -442,7 +909,7 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
             }
             # write block by block, so that only one block is held in memory
             #   instead of the annotation of all variants
-            gen <- function(k, i)
+            gen <- function(k)
             {
                 if (k > nblock) return(NULL)  # no more block
                 if (verbose && (k %in% dot_block))
@@ -452,10 +919,12 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
             # suppress the warnings from writing the annotation data, e.g.,
             #   "Missing characters are converted to" since NA is not allowed
             #   in a GDS string variable
-            suppressWarnings(
-                seqAddValue(outgds, paste0(rootnm, "/", colnm[i]), gen,
-                    replace=TRUE, param=i, verbose=verbose,
-                    verbose.attr=FALSE))
+            p <- paste0(rootnm, "/", colnm[i])
+            n <- suppressWarnings(.ann_add_stream(
+                index.gdsn(outgds, dirname(p)), basename(p), gen, n_total,
+                tmpl[[i]], lv[[i]]))
+            if (verbose)
+                .cat(capture.output(print(n, attribute=FALSE)))
         }
         # return
         invisible()
@@ -669,7 +1138,8 @@ seqAnnotateVCF <- function(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
 
 # Annotate a GDS file with a file name input
 seqAnnotateGDS <- function(gds_fn, annot_gds, varnm, add_to_gds=FALSE,
-    no_sample=TRUE, root="", cleanup=TRUE, bsize=1000000L, ..., verbose=TRUE)
+    no_sample=TRUE, root="", cleanup=TRUE, bsize=1000000L, parallel=FALSE,
+    ..., verbose=TRUE)
 {
     # check
     stopifnot(is.character(gds_fn), length(gds_fn)==1L)
@@ -690,5 +1160,5 @@ seqAnnotateGDS <- function(gds_fn, annot_gds, varnm, add_to_gds=FALSE,
 
     # process
     ann_gdsfile(gds, annot_gds, varnm, add_to_gds, no_sample, root,
-        cleanup=cleanup, bsize=bsize, ..., verbose=verbose)
+        cleanup=cleanup, bsize=bsize, parallel=parallel, ..., verbose=verbose)
 }

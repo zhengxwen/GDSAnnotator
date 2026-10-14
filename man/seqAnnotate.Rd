@@ -30,9 +30,9 @@
 \S4method{seqAnnotate}{ANY}(object, annot_gds, varnm, ..., verbose=TRUE)
 \S4method{seqAnnotate}{SeqVarGDSClass}(object, annot_gds, varnm,
     add_to_gds=FALSE, no_sample=TRUE, root="", cleanup=FALSE,
-    bsize=1000000L, ..., verbose=TRUE)
+    bsize=1000000L, parallel=FALSE, ..., verbose=TRUE)
 seqAnnotateGDS(gds_fn, annot_gds, varnm, add_to_gds=FALSE, no_sample=TRUE,
-    root="", cleanup=TRUE, bsize=1000000L, ..., verbose=TRUE)
+    root="", cleanup=TRUE, bsize=1000000L, parallel=FALSE, ..., verbose=TRUE)
 seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
 }
 \arguments{
@@ -77,11 +77,15 @@ seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
         "annotation/info" instead}
     \item{cleanup}{if \code{TRUE}, call \code{cleanup.gds} on the output
         GDS file when \code{add_to_gds} is a file name}
-    \item{bsize}{the block size, i.e., the number of variants to be mapped
-        and written to the output GDS file at a time, when \code{add_to_gds}
-        is \code{TRUE} or a file name; for in-place annotation, both variant
-        matching and annotation data are processed block by block, so memory
-        usage does not depend on the total number of variants}
+    \item{bsize}{the block size, i.e., the number of variants whose
+        annotation data are loaded and written to the output GDS file at a
+        time, when \code{add_to_gds} is \code{TRUE} or a file name; a smaller
+        block size reduces the memory usage of each process}
+    \item{parallel}{\code{FALSE} (serial processing), \code{TRUE}
+        (\code{parallel::detectCores() - 1} processes), a positive integer for
+        the number of processes, or a cluster object created by
+        \code{\link[parallel]{makeCluster}}; only used when
+        \code{add_to_gds} is \code{TRUE} or a file name, see details}
     \item{split}{regular expression to split the character vector in
         \code{object} by using \code{strsplit}, using "-", "_" or ":" by
         default, e.g., "22-23413241-A-G" will be split into "22", "23413241",
@@ -125,12 +129,33 @@ alternative allele per row. The output is the same for a \code{CollapsedVCF}
 and for its expanded version.
 
     When the annotations are written to a GDS file (\code{add_to_gds} is
-\code{TRUE} or a file name), the variants are matched and the annotation data
-are loaded and written block by block (see \code{bsize}), so that the memory
-usage does not depend on the total number of variants. The genotype GDS file
-then holds the annotations of its variants under "annotation/info" (or under
-"annotation/info/root"); with the annotations of FAVOR, this produces an
-annotated GDS (aGDS) file, see \code{\link{seqToGDS_FAVOR}}.
+\code{TRUE} or a file name), the variants are first matched to the annotation
+files, and then the annotation data are loaded and written block by block (see
+\code{bsize}), so that the memory usage of writing does not depend on the
+total number of variants. The genotype GDS file then holds the annotations of
+its variants under "annotation/info" (or under "annotation/info/root"); with
+the annotations of FAVOR, this produces an annotated GDS (aGDS) file, see
+\code{\link{seqToGDS_FAVOR}}. The values are written as they are stored in
+the annotation files: for a variable with a variable number of values per
+variant (e.g., the fields of VEP CSQ or SnpEff ANN), a variant without value
+or not found in the annotation files has no value, instead of a missing value;
+for a variable with one value per variant, a variant not found has a missing
+value. A factor (e.g., \code{":filter"}) is written as a factor with the
+levels in all the annotation files.
+
+    With \code{parallel}, the annotation variables in \code{varnm} are
+distributed to the processes, and the matching of the variants is not
+parallelized. Each process writes one variable at a time to a temporary GDS
+file in the directory of the output file, and the variables are copied to the
+output file in the order of \code{varnm}, so the output file does not depend
+on \code{parallel}. A number or \code{TRUE} starts new R processes with
+\code{\link[parallel]{makeCluster}} instead of forking the current process,
+since a job scheduler (e.g., SLURM) may count the memory shared by the forked
+processes once per process. Each process loads the packages, opens the
+annotation files it needs and holds one block of one variable, so the total
+memory usage grows with the number of processes. The temporary files need as
+much disk space as the new annotations, and there is no gain with a single
+variable in \code{varnm}.
 }
 
 \author{Xiuwen Zheng}
