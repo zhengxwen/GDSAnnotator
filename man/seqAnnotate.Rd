@@ -51,9 +51,10 @@ seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
     \item{vcf_fn}{character for a VCF or BCF file name, read by
         \code{\link[VariantAnnotation]{readVcf}}}
     \item{annot_gds}{a character vector for GDS file names or a list of opened
-        GDS files (\code{SeqVarGDSClass} objects), one chromosome per file;
-        if a variant is found in more than one file, the annotation is taken
-        from the first file}
+        GDS files (\code{SeqVarGDSClass} objects), e.g., one chromosome per
+        file, while a file can also contain more than one chromosome; if a
+        variant is found in more than one file, the annotation is taken from
+        the first file}
     \item{varnm}{a character vector for GDS node names without the prefix
         "annotation/info/"; ":id" for accessing "annotation/id", ":qual" for
         "annotation/qual", ":filter" for "annotation/filter"; if it is missing,

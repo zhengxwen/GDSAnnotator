@@ -19,8 +19,9 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
 .norm_chr <- function(x) sub("^chr", "", as.character(x), ignore.case=TRUE)
 
 # Open the GDS file(s) with variant annotation; the returned list is named
-#   by the chromosome of each file ("chr" + the chromosome label used in
-#   the file), for dispatching the query variants to the files
+#   by the chromosome(s) of each file ("chr" + the chromosome labels used in
+#   the file, separated by "&"), for dispatching the query variants to the
+#   files
 .open_annot_gds <- function(gds_fn, verbose=TRUE)
 {
     ans <- gds_fn
@@ -45,18 +46,13 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
             }
         }
     }
-    # the chromosome of each file (the files opened above are closed by the
-    #   on.exit() handler if an error occurs here)
-    nm <- vapply(seq_along(ans), function(i)
+    # the chromosome(s) of each file, from the number of variants per
+    #   chromosome (the files opened above are closed by the on.exit()
+    #   handler if an error occurs here)
+    nm <- vapply(ans, function(f)
     {
-        v <- seqGetData(ans[[i]], "$chromosome")
-        if (nrun(v) > 1L)
-        {
-            fn <- if (is.character(gds_fn)) gds_fn[i] else
-                paste0("annot_gds[[", i, "]]")
-            stop(fn, " should only contain one chromosome.")
-        }
-        paste(as.character(unique(v)), collapse="&")
+        v <- seqSummary(f, "chromosome", verbose=FALSE)
+        paste(names(v), collapse="&")
     }, "")
     names(ans) <- paste0("chr", nm)
     # output
