@@ -18,78 +18,6 @@ setGeneric("seqAnnotate", function(object, annot_gds, varnm, ..., verbose=TRUE)
 #   (e.g., "chr22" in a VCF file vs "22" in a GDS file)
 .norm_chr <- function(x) sub("^chr", "", as.character(x), ignore.case=TRUE)
 
-# Open the GDS file(s) with variant annotation; the returned list is named
-#   by the chromosome(s) of each file ("chr" + the chromosome labels used in
-#   the file, separated by "&"), for dispatching the query variants to the
-#   files
-.open_annot_gds <- function(gds_fn, verbose=TRUE)
-{
-    ans <- gds_fn
-    if (is.character(gds_fn))
-    {
-        # check
-        stopifnot(length(gds_fn) > 0L)
-        # open the GDS file(s)
-        ans <- vector("list", length(gds_fn))
-        on.exit({ for (f in ans) if (!is.null(f)) seqClose(f) })
-        for (i in seq_along(gds_fn))
-        {
-            if (isTRUE(verbose))
-                message("Open ", sQuote(basename(gds_fn[i])), appendLF=FALSE)
-            # open the file
-            f <- ans[[i]] <- seqOpen(gds_fn[i])
-            if (isTRUE(verbose))
-            {
-                n <- seqSummary(f, "genotype", verbose=FALSE)$dim[3L]
-                .cat(" [", prettyNum(n, big.mark=",", scientific=FALSE),
-                    " variants]")
-            }
-        }
-    }
-    # the chromosome(s) of each file, from the number of variants per
-    #   chromosome (the files opened above are closed by the on.exit()
-    #   handler if an error occurs here)
-    nm <- vapply(ans, function(f)
-    {
-        v <- seqSummary(f, "chromosome", verbose=FALSE)
-        paste(names(v), collapse="&")
-    }, "")
-    names(ans) <- paste0("chr", nm)
-    # output
-    on.exit()
-    ans
-}
-
-# Close the GDS file(s)
-.close_annot_gds <- function(annot_gds)
-{
-    lapply(annot_gds, seqClose)
-    invisible()
-}
-
-# Check annotation gds list
-.check_annot_gds <- function(annot_gds)
-{
-    if (is.character(annot_gds))
-    {
-        if (length(annot_gds) == 0L)
-            stop("No annotation gds file!")
-        fn <- annot_gds[!file.exists(annot_gds)]
-        if (length(fn))
-            stop("No file(s): ", paste(fn, collapse=", "), ".")
-    } else if (is.list(annot_gds))
-    {
-        if (length(annot_gds) == 0L)
-            stop("No annotation gds file!")
-        for (i in seq_along(annot_gds))
-        {
-            if (!inherits(annot_gds[[i]], "SeqVarGDSClass"))
-                stop("annot_gds[[", i, "]] is not a GDS object.")
-        }
-    }
-    invisible()
-}
-
 # GDS nodes for the INFO field
 .gds_varnm_cvt <- c(
     ':chromosome'="chromosome", ':position'="position", ':allele'="allele",
@@ -195,9 +123,9 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
     if (length(chr) == 1L) chr <- rep(chr, length(pos))
     # match chromosome names in the annotation GDS files, ignoring the "chr"
     #   prefix; 'gds_chr' is the chromosome label as stored in each file
-    s <- strsplit(sub("^chr", "", names(annot_gds)), "&", fixed=TRUE)
-    gds_idx <- rep(seq_along(annot_gds), times=lengths(s))
-    gds_chr <- unlist(s)
+    gds_chr <- mcols(annot_gds)$chromosome
+    gds_idx <- rep(seq_along(annot_gds), times=lengths(gds_chr))
+    gds_chr <- unlist(gds_chr, use.names=FALSE)
     names(gds_idx) <- .norm_chr(gds_chr)
     # process each chromosome subset
     ans <- vector("list", length(chr_lst))
@@ -233,10 +161,10 @@ ann_chr_pos_allele <- function(chr, pos, ref, alt, annot_gds, varnm,
             if (!length(varnm)) d$file_idx <- Rle(k, nrow(d))
             # temporary index for combining results in original input order
             d$..idx <- idx
-            if (j < length(gds_ii) && any(d$..no))
+            if (j < length(gds_ii))
             {
-                # some variants are not found in this file,
-                # so they will be processed in the next file(s)
+                # only the variants not found in this file are processed in
+                #   the next file(s), none if all of them are found
                 idx <- idx[d$..no]
                 d <- d[!d$..no, , drop=FALSE]
             }
@@ -270,11 +198,10 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
     if (is.null(ref)) stop("No 'ref' column.")
     alt <- object[[col_alt]]
     # check & open annotated gds
-    .check_annot_gds(annot_gds)
     if_close_gds <- is.character(annot_gds)
-    annot_gds <- .open_annot_gds(annot_gds, verbose)
+    annot_gds <- .as_annot_gds(annot_gds, verbose)
     if (if_close_gds)
-        on.exit(.close_annot_gds(annot_gds))
+        on.exit(seqClose(annot_gds))
     if (missing(varnm))
         varnm <- .annot_list(annot_gds[[1L]])
     if (is.null(varnm)) varnm <- character()
@@ -381,7 +308,7 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
     lapply(varnm, function(nm)
     {
         lv <- NULL
-        for (f in annot_gds)
+        for (f in as.list(annot_gds))
         {
             n <- index.gdsn(f, nm, silent=TRUE)
             if (is.null(n)) next
@@ -461,7 +388,7 @@ ann_dataframe <- function(object, annot_gds, varnm, col_chr="chr",
     vapply(varnm, function(nm)
     {
         s <- 0
-        for (f in annot_gds)
+        for (f in as.list(annot_gds))
         {
             for (p in c(nm, paste0(dirname(nm), "/@", basename(nm))))
             {
@@ -761,11 +688,10 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
     stopifnot(is.logical(no_sample), length(no_sample)==1L)
     stopifnot(is.character(root), length(root)==1L, !is.na(root))
     # check & open annotated gds
-    .check_annot_gds(annot_gds)
     if_close_gds <- is.character(annot_gds)
-    annot_gds <- .open_annot_gds(annot_gds, verbose)
+    annot_gds <- .as_annot_gds(annot_gds, verbose)
     if (if_close_gds)
-        on.exit(.close_annot_gds(annot_gds))
+        on.exit(seqClose(annot_gds))
     # check annotation variable names
     if (missing(varnm))
         varnm <- .annot_list(annot_gds[[1L]])
@@ -863,13 +789,12 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         if (npar > 1L)
         {
             # each process opens the annotation files again
-            annot_fn <- normalizePath(vapply(annot_gds,
-                function(f) f$filename, ""))
+            annot_fn <- mcols(annot_gds)$filename
             size <- .annot_size(annot_gds, varnm)
             if (if_close_gds)
             {
-                .close_annot_gds(annot_gds)
-                annot_gds <- list()  # not to be closed again on exit
+                seqClose(annot_gds)
+                annot_gds <- annot_gds[0L]  # not to be closed again on exit
             }
             # the processes read the file and variant indices from a file
             fn <- outgds$filename
@@ -945,11 +870,10 @@ ann_variant <- function(object, annot_gds, varnm, split="[-_:]", ...,
     ref <- vapply(ss, `[`, "", i=3L)
     alt <- vapply(ss, `[`, "", i=4L)
     # check & open annotated gds
-    .check_annot_gds(annot_gds)
     if_close_gds <- is.character(annot_gds)
-    annot_gds <- .open_annot_gds(annot_gds, verbose)
+    annot_gds <- .as_annot_gds(annot_gds, verbose)
     if (if_close_gds)
-        on.exit(.close_annot_gds(annot_gds))
+        on.exit(seqClose(annot_gds))
     if (missing(varnm))
         varnm <- .annot_list(annot_gds[[1L]])
     if (is.null(varnm)) varnm <- character()
@@ -963,11 +887,10 @@ ann_variant <- function(object, annot_gds, varnm, split="[-_:]", ...,
 ann_GRanges <- function(object, annot_gds, varnm, ..., verbose=TRUE)
 {
     # check & open annotated gds
-    .check_annot_gds(annot_gds)
     if_close_gds <- is.character(annot_gds)
-    annot_gds <- .open_annot_gds(annot_gds, verbose)
+    annot_gds <- .as_annot_gds(annot_gds, verbose)
     if (if_close_gds)
-        on.exit(.close_annot_gds(annot_gds))
+        on.exit(seqClose(annot_gds))
     if (missing(varnm))
         varnm <- .annot_list(annot_gds[[1L]])
     if (is.null(varnm)) varnm <- character()
@@ -1010,11 +933,10 @@ ann_IRanges <- function(object, annot_gds, varnm, chr, ..., verbose=TRUE)
         stop("'chr' should be specified for an IRanges object.")
     stopifnot(is.character(chr), length(chr)>0L)
     # check & open annotated gds
-    .check_annot_gds(annot_gds)
     if_close_gds <- is.character(annot_gds)
-    annot_gds <- .open_annot_gds(annot_gds, verbose)
+    annot_gds <- .as_annot_gds(annot_gds, verbose)
     if (if_close_gds)
-        on.exit(.close_annot_gds(annot_gds))
+        on.exit(seqClose(annot_gds))
     if (missing(varnm))
         varnm <- .annot_list(annot_gds[[1L]])
     if (is.null(varnm)) varnm <- character()

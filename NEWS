@@ -1,3 +1,16 @@
+CHANGES IN VERSION 0.99.2
+-------------------------
+
+    o New function `seqAnnotOpen()` returning a `SeqAnnotGDSList` object, which
+      opens the annotation GDS files once for more than one call of
+      `seqAnnotate()`; the object lists the files with their chromosomes and
+      numbers of variants in `mcols()`, and the files are closed by
+      `seqClose()`
+
+    o An annotation GDS file can contain more than one chromosome, instead of
+      one chromosome per file
+
+
 CHANGES IN VERSION 0.99.1
 -------------------------
 

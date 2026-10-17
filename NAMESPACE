@@ -5,22 +5,23 @@ import(gdsfmt)
 import(SeqArray)
 importFrom(utils, head, read.csv, untar, capture.output)
 importFrom(parallel, makeCluster, stopCluster, clusterCall, detectCores)
-importFrom(IRanges, IRanges, which, start)
-importFrom(S4Vectors, DataFrame, Rle)
+importFrom(IRanges, IRanges, CharacterList, which, start)
+importFrom(S4Vectors, DataFrame, Rle, mcols)
 importFrom(GenomicRanges, GRanges, GRangesList, seqnames)
 importClassesFrom(IRanges, IRanges)
-importClassesFrom(S4Vectors, DataFrame)
+importClassesFrom(S4Vectors, DataFrame, SimpleList)
 importClassesFrom(GenomicRanges, GRanges, GRangesList)
 
 # Exports
 export(
-    seqAnnotate, seqAnnotateGDS, seqAnnotateVCF,
+    seqAnnotate, seqAnnotateGDS, seqAnnotateVCF, seqAnnotOpen,
     seqAnnotList, seqValueCounts,
     seqToGDS_FAVOR, seqToGDS_FAVOR_tar, seqToGDS_gnomAD,
     seqToGDS_VEP, seqToGDS_SnpEff, seqToGDS_ANNOVAR,
     seqAnnotStat, seqAnnotReport, seqAnnotGeneTable
 )
-exportMethods(seqAnnotate)
+exportClasses(SeqAnnotGDSList)
+exportMethods(seqAnnotate, seqClose, show)
 
 # S3 methods
 S3method(print, SeqAnnotStat)

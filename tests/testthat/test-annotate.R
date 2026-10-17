@@ -177,6 +177,17 @@ test_that("parallel writes the same nodes as serial processing", {
     a <- .info_nodes(out[3L])
     expect_length(a, 2L * length(nm))
     expect_identical(.info_nodes(out[4L]), a)
+    # the processes open the files of a SeqAnnotGDSList object again, and
+    #   the files stay open
+    x <- seqAnnotOpen(snpeff, allow.duplicate=TRUE)
+    on.exit(seqClose(x), add=TRUE)
+    out5 <- tempfile(fileext=".gds")
+    on.exit(unlink(out5, force=TRUE), add=TRUE)
+    seqAnnotateGDS(geno, x, varnm=nm, add_to_gds=out5, root="ann",
+        bsize=7L, parallel=cl, verbose=FALSE)
+    expect_identical(.info_nodes(out5), .info_nodes(out[1L]))
+    expect_s4_class(seqAnnotate("22-1-A-T", x, varnm=NULL, verbose=FALSE),
+        "DataFrame")
     # no temporary file left
     expect_length(list.files(tempdir(), "\\.gds\\.(tmp[0-9]+_|map)"), 0L)
     expect_error(seqAnnotateGDS(geno, snpeff, varnm=nm, add_to_gds=out[1L],
@@ -336,6 +347,46 @@ test_that("annot_gds can be a list of opened GDS files", {
     expect_s4_class(f1, "SeqVarGDSClass")
     expect_equal(nrow(seqAnnotate(snp, list(f1), varnm="cadd_phred",
         verbose=FALSE)), 3L)
+})
+
+test_that("seqAnnotOpen opens the files once for more than one call", {
+    v <- .sample_variants(3L)
+    snp <- paste(v$chr, v$pos, v$ref, v$alt, sep="-")
+    gnomad <- ex_file("gnomad.genomes.v4.chr22_sub.gds")
+    a <- seqAnnotate(snp, favor_gds(), varnm="cadd_phred", verbose=FALSE)
+    x <- seqAnnotOpen(c(favor_gds(), gnomad))
+    on.exit(seqClose(x))
+    expect_s4_class(x, "SeqAnnotGDSList")
+    expect_length(x, 2L)
+    expect_s4_class(x[[1L]], "SeqVarGDSClass")
+    m <- S4Vectors::mcols(x)
+    expect_equal(m$filename, normalizePath(c(favor_gds(), gnomad)))
+    expect_equal(as.list(m$chromosome), list("22", "22"))
+    expect_equal(m$n_variant[1L],
+        seqSummary(x[[1L]], "genotype", verbose=FALSE)$dim[3L])
+    expect_output(show(x), "2 annotation GDS file")
+    # the same as with the file names, and the files stay open
+    expect_equal(seqAnnotate(snp, x, varnm="cadd_phred", verbose=FALSE), a)
+    expect_equal(seqAnnotate(snp, x, varnm="cadd_phred", verbose=FALSE), a)
+    # a subset keeps the file information
+    y <- x[2L]
+    expect_s4_class(y, "SeqAnnotGDSList")
+    expect_equal(S4Vectors::mcols(y)$filename, normalizePath(gnomad))
+    expect_error(seqAnnotOpen(character()), "No annotation")
+    expect_error(seqAnnotOpen(tempfile()), "No file")
+    expect_error(seqAnnotate(snp, 1L, varnm="cadd_phred", verbose=FALSE),
+        "annot_gds")
+})
+
+test_that("the chromosomes of an opened file do not depend on its filter", {
+    v <- .sample_variants(2L)
+    snp <- paste(v$chr, v$pos, v$ref, v$alt, sep="-")
+    f <- SeqArray::seqOpen(favor_gds(), allow.duplicate=TRUE)
+    on.exit(SeqArray::seqClose(f))
+    seqSetFilter(f, variant.sel=integer(), verbose=FALSE)
+    # an opened GDS file instead of a list
+    a <- seqAnnotate(snp, f, varnm="cadd_phred", verbose=FALSE)
+    expect_equal(as.numeric(a$cadd_phred), as.numeric(v$cadd), tolerance=1e-5)
 })
 
 test_that("seqAnnotate works on CollapsedVCF and ExpandedVCF objects", {

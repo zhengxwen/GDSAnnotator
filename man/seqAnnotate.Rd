@@ -50,11 +50,14 @@ seqAnnotateVCF(vcf_fn, annot_gds, varnm, ..., verbose=TRUE)
     \item{gds_fn}{character for a SeqArray GDS file name}
     \item{vcf_fn}{character for a VCF or BCF file name, read by
         \code{\link[VariantAnnotation]{readVcf}}}
-    \item{annot_gds}{a character vector for GDS file names or a list of opened
-        GDS files (\code{SeqVarGDSClass} objects), e.g., one chromosome per
-        file, while a file can also contain more than one chromosome; if a
-        variant is found in more than one file, the annotation is taken from
-        the first file}
+    \item{annot_gds}{a character vector for GDS file names, a
+        \code{\link{SeqAnnotGDSList}} object returned by
+        \code{\link{seqAnnotOpen}}, an opened GDS file or a list of opened GDS
+        files (\code{SeqVarGDSClass} objects), e.g., one chromosome per file,
+        while a file can also contain more than one chromosome; the files
+        given by names are opened and closed in the call, and the opened
+        files stay open; if a variant is found in more than one file, the
+        annotation is taken from the first file}
     \item{varnm}{a character vector for GDS node names without the prefix
         "annotation/info/"; ":id" for accessing "annotation/id", ":qual" for
         "annotation/qual", ":filter" for "annotation/filter"; if it is missing,
@@ -161,8 +164,9 @@ variable in \code{varnm}.
 
 \author{Xiuwen Zheng}
 \seealso{
-    \code{\link{seqAnnotList}}, \code{\link{seqValueCounts}},
-    \code{\link{seqToGDS_FAVOR}}, \code{\link{seqToGDS_VEP}}
+    \code{\link{seqAnnotOpen}}, \code{\link{seqAnnotList}},
+    \code{\link{seqValueCounts}}, \code{\link{seqToGDS_FAVOR}},
+    \code{\link{seqToGDS_VEP}}
 }
 
 \examples{

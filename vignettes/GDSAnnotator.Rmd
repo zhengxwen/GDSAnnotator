@@ -90,6 +90,7 @@ the annotations are returned as a `DataFrame`.
 | `seqAnnotate`       | Annotate variants using annotations stored in GDS |
 | `seqAnnotateVCF`    | Annotate the variants of a VCF file               |
 | `seqAnnotateGDS`    | Annotate the variants of a SeqArray GDS file      |
+| `seqAnnotOpen`      | Open annotation GDS files for more than one call  |
 | `seqAnnotList`      | List the annotations stored in a GDS file         |
 | `seqValueCounts`    | Count the unique values of annotations            |
 | `seqAnnotStat`      | Summary statistics of variants and annotations    |
@@ -236,6 +237,26 @@ the results are returned in the order of the input:
 ```{r annot-multi, eval = FALSE}
 annot_gds <- sprintf("favor_chr%s.gds", c(1:22, "X"))
 seqAnnotate(snps, annot_gds, varnm = c("cadd_phred", "linsight"))
+```
+
+A file can also contain more than one chromosome. Since the files given by
+names are opened and closed in each call, `seqAnnotOpen()` opens them once
+when the variants are annotated in more than one call, e.g., batch by batch.
+The returned `SeqAnnotGDSList` object lists the files with their chromosomes,
+and the files stay open until `seqClose()`:
+
+```{r annot-open}
+# the example file of chromosome 22 used above
+fn <- system.file("extdata", "favor_chr22_sub.gds", package = "GDSAnnotator")
+annot <- seqAnnotOpen(fn)
+annot
+
+seqAnnotate(snps[1:2], annot, varnm = c("cadd_phred", "linsight"),
+    verbose = FALSE)
+seqAnnotate(snps[3:4], annot, varnm = c("cadd_phred", "linsight"),
+    verbose = FALSE)
+
+seqClose(annot)
 ```
 
 ## Writing annotations into a SeqArray GDS file
