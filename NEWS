@@ -1,3 +1,20 @@
+CHANGES IN VERSION 0.99.2
+-------------------------
+
+    o The conversion functions are renamed in camelCase, following the
+      naming of `SeqArray::seqVCF2GDS()`: `seqToGDS_FAVOR()` =>
+      `seqFAVOR2GDS()`, `seqToGDS_FAVOR_tar()` => `seqFAVORTar2GDS()`,
+      `seqToGDS_gnomAD()` => `seqGnomAD2GDS()`, `seqToGDS_VEP()` =>
+      `seqVEP2GDS()`, `seqToGDS_SnpEff()` => `seqSnpEff2GDS()` and
+      `seqToGDS_ANNOVAR()` => `seqANNOVAR2GDS()`
+
+    o New help page `?GDSAnnotator-extdata` describing the example data;
+      'inst/script' is renamed to 'inst/scripts'
+
+    o Internal code reorganized into smaller functions, without changing the
+      outputs; the benchmark script is removed from 'inst'
+
+
 CHANGES IN VERSION 0.99.1
 -------------------------
 

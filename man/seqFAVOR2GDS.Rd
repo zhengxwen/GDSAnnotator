@@ -1,14 +1,14 @@
-\name{seqToGDS_FAVOR}
-\alias{seqToGDS_FAVOR}
-\alias{seqToGDS_FAVOR_tar}
+\name{seqFAVOR2GDS}
+\alias{seqFAVOR2GDS}
+\alias{seqFAVORTar2GDS}
 \title{Reformat FAVOR files}
 \description{
     Convert FAVOR CSV files to a SeqArray GDS file.
 }
 \usage{
-seqToGDS_FAVOR(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
+seqFAVOR2GDS(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     root="FAVOR", use_float32=TRUE, verbose=TRUE)
-seqToGDS_FAVOR_tar(tar_fn, out_fn, fn_in_tar=NULL,
+seqFAVORTar2GDS(tar_fn, out_fn, fn_in_tar=NULL,
     compress=c("LZMA", "ZIP", "none"), root="", use_float32=TRUE,
     block_size=100000L, tar_cmd=Sys.getenv("TAR"), verbose=TRUE)
 }
@@ -35,7 +35,7 @@ other columns are stored as annotations under "annotation/info" (or under
 FAVOR essential database are defined in the internal table
 "favor_csv_header.csv" in the "extdata" folder.
 
-    \code{seqToGDS_FAVOR_tar()} reads the CSV files directly from a tar
+    \code{seqFAVORTar2GDS()} reads the CSV files directly from a tar
 archive (e.g., the per-chromosome files of the FAVOR essential database)
 block by block, so that it does not require extracting the archive nor
 loading a whole CSV file in memory; it calls the external program
@@ -62,10 +62,30 @@ csv_fn <- system.file("extdata", "favor_chr22_sub.csv.gz",
     package="GDSAnnotator")
 
 out_fn <- tempfile(fileext=".gds")
-seqToGDS_FAVOR(csv_fn, out_fn)
+seqFAVOR2GDS(csv_fn, out_fn)
 
 # list the annotations in the output file
 seqAnnotList(out_fn)
+
+# a tar file of FAVOR CSV files (here, the CSV file above only), which is
+#   read with the external program 'tar' (this example is run on Unix only)
+if (.Platform$OS.type == "unix" && nzchar(Sys.which("tar")))
+{
+    tmp_dir <- tempfile("favor")
+    dir.create(tmp_dir)
+    writeLines(readLines(csv_fn), file.path(tmp_dir, "chr22_1.csv"))
+    tar_fn <- tempfile(fileext=".tar.gz")
+    old_wd <- setwd(tmp_dir)
+    utils::tar(tar_fn, files="chr22_1.csv", compression="gzip")
+    setwd(old_wd)
+
+    out_fn2 <- tempfile(fileext=".gds")
+    seqFAVORTar2GDS(tar_fn, out_fn2, tar_cmd="tar")
+    seqAnnotList(out_fn2)
+
+    # delete the temporary files
+    unlink(c(tmp_dir, tar_fn, out_fn2), recursive=TRUE, force=TRUE)
+}
 
 # delete the temporary file
 unlink(out_fn, force=TRUE)

@@ -14,10 +14,10 @@
     objdesp.gdsn(index.gdsn(f, "variant.id"))$dim
 }
 
-test_that("seqToGDS_FAVOR converts CSV and attaches a digest", {
+test_that("seqFAVOR2GDS converts CSV and attaches a digest", {
     out <- tempfile(fileext=".gds")
     on.exit(unlink(out, force=TRUE))
-    seqToGDS_FAVOR(ex_file("favor_chr22_sub.csv.gz"), out, compress="ZIP",
+    seqFAVOR2GDS(ex_file("favor_chr22_sub.csv.gz"), out, compress="ZIP",
         verbose=FALSE)
     expect_gt(.n_var(out), 0L)
     expect_gt(.n_info(out), 0L)
@@ -26,19 +26,19 @@ test_that("seqToGDS_FAVOR converts CSV and attaches a digest", {
     expect_true("md5" %in% names(get.attr.gdsn(index.gdsn(f, "position"))))
 })
 
-test_that("seqToGDS_gnomAD converts a VCF", {
+test_that("seqGnomAD2GDS converts a VCF", {
     out <- tempfile(fileext=".gds")
     on.exit(unlink(out, force=TRUE))
-    seqToGDS_gnomAD(ex_file("gnomad.genomes.v4.chr22_sub.vcf.gz"), out,
+    seqGnomAD2GDS(ex_file("gnomad.genomes.v4.chr22_sub.vcf.gz"), out,
         compress="ZIP", verbose=FALSE)
     expect_gt(.n_var(out), 0L)
     expect_gt(.n_info(out), 0L)
 })
 
-test_that("seqToGDS_VEP splits CSQ and honours LZMA recompression", {
+test_that("seqVEP2GDS splits CSQ and honours LZMA recompression", {
     out <- tempfile(fileext=".gds")
     on.exit(unlink(out, force=TRUE))
-    seqToGDS_VEP(ex_file("example_wgs_sites_chr22_vep.vcf.gz"), out,
+    seqVEP2GDS(ex_file("example_wgs_sites_chr22_vep.vcf.gz"), out,
         compress="LZMA", verbose=FALSE)
     f <- SeqArray::seqOpen(out, allow.duplicate=TRUE)
     on.exit(SeqArray::seqClose(f), add=TRUE)
@@ -49,20 +49,20 @@ test_that("seqToGDS_VEP splits CSQ and honours LZMA recompression", {
     expect_match(objdesp.gdsn(nd)$compress, "^LZMA")
 })
 
-test_that("seqToGDS_SnpEff splits the ANN field", {
+test_that("seqSnpEff2GDS splits the ANN field", {
     out <- tempfile(fileext=".gds")
     on.exit(unlink(out, force=TRUE))
-    seqToGDS_SnpEff(ex_file("example_wgs_sites_chr22_snpeff.vcf.gz"), out,
+    seqSnpEff2GDS(ex_file("example_wgs_sites_chr22_snpeff.vcf.gz"), out,
         compress="ZIP", verbose=FALSE)
     f <- SeqArray::seqOpen(out, allow.duplicate=TRUE)
     on.exit(SeqArray::seqClose(f), add=TRUE)
     expect_gt(length(ls.gdsn(index.gdsn(f, "annotation/info/ANN.list"))), 0L)
 })
 
-test_that("seqToGDS_ANNOVAR imports VCF and removes bookkeeping nodes", {
+test_that("seqANNOVAR2GDS imports VCF and removes bookkeeping nodes", {
     out <- tempfile(fileext=".gds")
     on.exit(unlink(out, force=TRUE))
-    seqToGDS_ANNOVAR(ex_file("example_wgs_sites_chr22_annovar.vcf.gz"), out,
+    seqANNOVAR2GDS(ex_file("example_wgs_sites_chr22_annovar.vcf.gz"), out,
         compress="ZIP", verbose=FALSE)
     f <- SeqArray::seqOpen(out, allow.duplicate=TRUE)
     on.exit(SeqArray::seqClose(f), add=TRUE)

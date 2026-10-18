@@ -28,10 +28,10 @@ BiocManager::install("GDSAnnotator")
 
 | Function        | Description |
 |:----------------|:-------------------------------------------|
-| seqToGDS_FAVOR  | Convert FAVOR CSV files to GDS |
-| seqToGDS_gnomAD | Convert gnomAD VCF files to GDS |
-| seqToGDS_VEP    | Convert Ensembl VEP VCF output to GDS |
-| seqToGDS_SnpEff | Convert SnpEff VCF output to GDS |
+| seqFAVOR2GDS    | Convert FAVOR CSV files to GDS |
+| seqGnomAD2GDS   | Convert gnomAD VCF files to GDS |
+| seqVEP2GDS      | Convert Ensembl VEP VCF output to GDS |
+| seqSnpEff2GDS   | Convert SnpEff VCF output to GDS |
 | seqAnnotate     | Annotate variants using the annotation stored in GDS |
 | seqAnnotateVCF  | Annotate the variants of a VCF file |
 | seqAnnotateGDS  | Annotate the variants of a SeqArray GDS file |

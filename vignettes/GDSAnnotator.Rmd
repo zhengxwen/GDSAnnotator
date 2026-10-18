@@ -12,7 +12,7 @@ output:
     toc_depth: 3
     number_sections: true
 vignette: >
-  %\VignetteIndexEntry{GDSAnnotator: Whole-genome variant annotation using GDS files}
+  %\VignetteIndexEntry{GDSAnnotator: Whole-genome variant annotation}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -83,10 +83,10 @@ the annotations are returned as a `DataFrame`.
 
 | Function            | Description                                       |
 |:--------------------|:--------------------------------------------------|
-| `seqToGDS_FAVOR`    | Convert FAVOR CSV files to GDS                    |
-| `seqToGDS_gnomAD`   | Convert gnomAD VCF files to GDS                   |
-| `seqToGDS_VEP`      | Convert Ensembl VEP VCF output to GDS             |
-| `seqToGDS_SnpEff`   | Convert SnpEff VCF output to GDS                  |
+| `seqFAVOR2GDS`      | Convert FAVOR CSV files to GDS                    |
+| `seqGnomAD2GDS`     | Convert gnomAD VCF files to GDS                   |
+| `seqVEP2GDS`        | Convert Ensembl VEP VCF output to GDS             |
+| `seqSnpEff2GDS`     | Convert SnpEff VCF output to GDS                  |
 | `seqAnnotate`       | Annotate variants using annotations stored in GDS |
 | `seqAnnotateVCF`    | Annotate the variants of a VCF file               |
 | `seqAnnotateGDS`    | Annotate the variants of a SeqArray GDS file      |
@@ -234,7 +234,7 @@ once, the query variants are dispatched to the file of their chromosome, and
 the results are returned in the order of the input:
 
 ```{r annot-multi, eval = FALSE}
-annot_gds <- sprintf("favor_chr%s.gds", c(1:22, "X"))
+annot_gds <- sprintf("favor_chr%s.gds", c(seq_len(22L), "X"))
 seqAnnotate(snps, annot_gds, varnm = c("cadd_phred", "linsight"))
 ```
 
@@ -269,7 +269,7 @@ vcf_fn <- system.file("extdata", "gnomad.genomes.v4.chr22_sub.vcf.gz",
     package = "GDSAnnotator")
 
 out_fn <- tempfile(fileext = ".gds")
-seqToGDS_gnomAD(vcf_fn, out_fn, verbose = FALSE)
+seqGnomAD2GDS(vcf_fn, out_fn, verbose = FALSE)
 
 unlink(out_fn, force = TRUE)
 ```
@@ -284,7 +284,7 @@ vcf_fn <- system.file("extdata", "example_wgs_sites_chr22_vep.vcf.gz",
     package = "GDSAnnotator")
 
 out_fn <- tempfile(fileext = ".gds")
-seqToGDS_VEP(vcf_fn, out_fn, verbose = FALSE)
+seqVEP2GDS(vcf_fn, out_fn, verbose = FALSE)
 
 unlink(out_fn, force = TRUE)
 ```
@@ -299,7 +299,7 @@ vcf_fn <- system.file("extdata", "example_wgs_sites_chr22_snpeff.vcf.gz",
     package = "GDSAnnotator")
 
 out_fn <- tempfile(fileext = ".gds")
-seqToGDS_SnpEff(vcf_fn, out_fn, verbose = FALSE)
+seqSnpEff2GDS(vcf_fn, out_fn, verbose = FALSE)
 
 unlink(out_fn, force = TRUE)
 ```
@@ -428,7 +428,7 @@ the number of distinct categories (e.g. the number of genes), not on the
 number of variants:
 
 ```{r annot-stat-merge, eval = FALSE}
-gds_fn <- sprintf("annot_chr%d.gds", 1:22)
+gds_fn <- sprintf("annot_chr%d.gds", seq_len(22L))
 
 st <- seqAnnotStat(gds_fn)
 seqAnnotReport(st, "wgs_summary.html", title = "Whole-genome annotation")

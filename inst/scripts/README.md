@@ -4,17 +4,17 @@ All the example files are small subsets of chromosome 22 (GRCh38), intended
 only for the examples, the unit tests and the vignette. The `.gds` files are
 generated from the text files next to them by the package's own conversion
 functions, see `make_extdata.R` in this directory
-(`Rscript inst/script/make_extdata.R` from the package root).
+(`Rscript inst/scripts/make_extdata.R` from the package root).
 
 ## Annotation resources
 
 | File | Description |
 |:-----|:------------|
 | `favor_chr22_sub.csv.gz` | 1,000 consecutive variants at the start of chromosome 22 (positions 10,510,001-10,510,333) from the FAVOR essential database (https://favor.genohub.org, GRCh38), in the CSV format distributed by FAVOR; the columns "variant_vcf", "chromosome", "position", "ref_vcf" and "alt_vcf" identify the variants, and the other 30 columns are the FAVOR annotation scores (aPC scores, CADD, LINSIGHT, GeneHancer, rDHS, ...). |
-| `favor_chr22_sub.gds` | the CSV file above converted with `seqToGDS_FAVOR(root="")`. |
-| `favor_csv_header.csv` | the column names, types and descriptions of the FAVOR essential database CSV files, used by `seqToGDS_FAVOR_tar()` to read the CSV files with the correct column types; compiled from the FAVOR documentation. |
+| `favor_chr22_sub.gds` | the CSV file above converted with `seqFAVOR2GDS(root="")`. |
+| `favor_csv_header.csv` | the column names, types and descriptions of the FAVOR essential database CSV files, used by `seqFAVORTar2GDS()` to read the CSV files with the correct column types; compiled from the FAVOR documentation. |
 | `gnomad.genomes.v4.chr22_sub.vcf.gz` (+ `.csi`) | 150 variants (positions 10,510,033-10,510,756) from the gnomAD v4.1 genomes sites VCF of chromosome 22 (https://gnomad.broadinstitute.org/downloads, released under the CC0 license); the header and the INFO fields are unchanged. |
-| `gnomad.genomes.v4.chr22_sub.gds` | the VCF file above converted with `seqToGDS_gnomAD()`. |
+| `gnomad.genomes.v4.chr22_sub.gds` | the VCF file above converted with `seqGnomAD2GDS()`. |
 
 ## Annotator outputs
 
@@ -27,9 +27,9 @@ the annotated variants was kept:
 | File | Description |
 |:-----|:------------|
 | `example_wgs_sites_chr22_vep.vcf.gz` (+ `.csi`) | 250 variants annotated with Ensembl VEP v113 (cache GRCh38.p14, Ensembl 113, `--everything --flag_pick --nearest gene`, see the `##VEP` and `##VEP-command-line` header lines). |
-| `example_wgs_sites_chr22_vep.gds` | converted with `seqToGDS_VEP()`: the CSQ field is split into the sub-fields under `annotation/info/CSQ.list`. |
+| `example_wgs_sites_chr22_vep.gds` | converted with `seqVEP2GDS()`: the CSQ field is split into the sub-fields under `annotation/info/CSQ.list`. |
 | `example_wgs_sites_chr22_snpeff.vcf.gz` (+ `.csi`) | 200 variants annotated with SnpEff 5.2f (database GRCh38.p14, `-lof`, see the `##SnpEffVersion` and `##SnpEffCmd` header lines). |
-| `example_wgs_sites_chr22_snpeff.gds` | converted with `seqToGDS_SnpEff()`: the ANN, LOF and NMD fields are split into the sub-fields under `annotation/info/ANN.list`, `LOF.list` and `NMD.list`. |
+| `example_wgs_sites_chr22_snpeff.gds` | converted with `seqSnpEff2GDS()`: the ANN, LOF and NMD fields are split into the sub-fields under `annotation/info/ANN.list`, `LOF.list` and `NMD.list`. |
 | `example_wgs_sites_chr22_annovar.vcf.gz` | 10 variants annotated with ANNOVAR (`table_annovar.pl -vcfinput`, with the refGeneWithVer, gnomAD exome and dbNSFP-based protocols, see the INFO header lines). |
 
 ## Format tables

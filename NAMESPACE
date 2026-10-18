@@ -15,8 +15,8 @@ importClassesFrom(GenomicRanges, GRanges, GRangesList)
 export(
     seqAnnotate, seqAnnotateGDS, seqAnnotateVCF,
     seqAnnotList, seqValueCounts,
-    seqToGDS_FAVOR, seqToGDS_FAVOR_tar, seqToGDS_gnomAD,
-    seqToGDS_VEP, seqToGDS_SnpEff, seqToGDS_ANNOVAR,
+    seqFAVOR2GDS, seqFAVORTar2GDS, seqGnomAD2GDS,
+    seqVEP2GDS, seqSnpEff2GDS, seqANNOVAR2GDS,
     seqAnnotStat, seqAnnotReport, seqAnnotGeneTable
 )
 exportMethods(seqAnnotate)
