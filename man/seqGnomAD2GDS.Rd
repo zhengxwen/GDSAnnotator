@@ -1,11 +1,11 @@
-\name{seqToGDS_gnomAD}
-\alias{seqToGDS_gnomAD}
+\name{seqGnomAD2GDS}
+\alias{seqGnomAD2GDS}
 \title{Reformat gnomAD VCF}
 \description{
     Convert gnomAD VCF files to a SeqArray GDS file.
 }
 \usage{
-seqToGDS_gnomAD(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
+seqGnomAD2GDS(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     verbose=TRUE)
 }
 \arguments{
@@ -35,7 +35,7 @@ vcf_fn <- system.file("extdata", "gnomad.genomes.v4.chr22_sub.vcf.gz",
     package="GDSAnnotator")
 
 out_fn <- tempfile(fileext=".gds")
-seqToGDS_gnomAD(vcf_fn, out_fn)
+seqGnomAD2GDS(vcf_fn, out_fn)
 
 # list the annotations in the output file
 seqAnnotList(out_fn)

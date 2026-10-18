@@ -165,16 +165,17 @@ test_that("variants are dispatched to the file of their chromosome", {
     write.csv(df, csv21, row.names=FALSE)
     gds21 <- tempfile(fileext=".gds")
     on.exit(unlink(c(csv21, gds21), force=TRUE))
-    seqToGDS_FAVOR(csv21, gds21, compress="ZIP", root="", verbose=FALSE)
+    seqFAVOR2GDS(csv21, gds21, compress="ZIP", root="", verbose=FALSE)
     v <- .sample_variants(4L)
     # two variants on chr22, two on chr21 and one unknown variant
-    snp <- c(paste("22", v$pos[1:2], v$ref[1:2], v$alt[1:2], sep="-"),
+    i <- seq_len(2L)
+    snp <- c(paste("22", v$pos[i], v$ref[i], v$alt[i], sep="-"),
         paste("21", v$pos[3:4], v$ref[3:4], v$alt[3:4], sep="-"),
         "21-1-A-T")
     res <- seqAnnotate(snp, c(favor_gds(), gds21), varnm="cadd_phred",
         verbose=FALSE)
     expect_equal(nrow(res), 5L)
-    expect_equal(as.numeric(res$cadd_phred[1:4]), as.numeric(v$cadd),
+    expect_equal(as.numeric(res$cadd_phred[seq_len(4L)]), as.numeric(v$cadd),
         tolerance=1e-5)
     expect_true(is.na(res$cadd_phred[5L]))
     # the same with the files in the opposite order
@@ -183,7 +184,7 @@ test_that("variants are dispatched to the file of their chromosome", {
     expect_equal(as.numeric(res2$cadd_phred), as.numeric(res$cadd_phred))
     # the location of the variants
     loc <- seqAnnotate(snp, c(favor_gds(), gds21), varnm=NULL, verbose=FALSE)
-    expect_equal(as.integer(loc$file_idx)[1:4], c(1L, 1L, 2L, 2L))
+    expect_equal(as.integer(loc$file_idx)[seq_len(4L)], c(1L, 1L, 2L, 2L))
     expect_true(is.na(loc$variant_idx[5L]))
 })
 
@@ -210,8 +211,8 @@ test_that("annot_gds can be a list of opened GDS files", {
     #   is looked up in the second one
     loc <- seqAnnotate(c(snp, "22-10510756-C-A"), list(f2, f1), varnm=NULL,
         verbose=FALSE)
-    expect_false(anyNA(loc$variant_idx[1:3]))
-    expect_true(all(as.integer(loc$file_idx[1:3]) %in% 1:2))
+    expect_false(anyNA(loc$variant_idx[seq_len(3L)]))
+    expect_true(all(as.integer(loc$file_idx[seq_len(3L)]) %in% c(1L, 2L)))
     # the files are still open afterwards
     expect_s4_class(f1, "SeqVarGDSClass")
     expect_equal(nrow(seqAnnotate(snp, list(f1), varnm="cadd_phred",
@@ -239,7 +240,8 @@ test_that("seqAnnotate works on CollapsedVCF and ExpandedVCF objects", {
     a <- seqAnnotate(obj, favor_gds(), varnm="cadd_phred", verbose=FALSE)
     expect_s4_class(a, "DataFrame")
     expect_equal(nrow(a), 3L)
-    expect_equal(as.numeric(a$cadd_phred[1:2]), as.numeric(v$cadd[1:2]),
+    i <- seq_len(2L)
+    expect_equal(as.numeric(a$cadd_phred[i]), as.numeric(v$cadd[i]),
         tolerance=1e-5)
     # the same from the expanded VCF object and from the file name
     ex <- VariantAnnotation::expand(obj)
@@ -273,7 +275,7 @@ test_that("a VCF row without alternative allele is skipped", {
 })
 
 test_that("an unsupported input class gives an informative error", {
-    expect_error(seqAnnotate(1:3, favor_gds(), varnm="cadd_phred",
+    expect_error(seqAnnotate(seq_len(3L), favor_gds(), varnm="cadd_phred",
         verbose=FALSE), "No seqAnnotate\\(\\) method")
     expect_error(seqAnnotate(list(a=1), favor_gds(), verbose=FALSE),
         "class")

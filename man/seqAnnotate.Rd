@@ -130,13 +130,13 @@ are loaded and written block by block (see \code{bsize}), so that the memory
 usage does not depend on the total number of variants. The genotype GDS file
 then holds the annotations of its variants under "annotation/info" (or under
 "annotation/info/root"); with the annotations of FAVOR, this produces an
-annotated GDS (aGDS) file, see \code{\link{seqToGDS_FAVOR}}.
+annotated GDS (aGDS) file, see \code{\link{seqFAVOR2GDS}}.
 }
 
 \author{Xiuwen Zheng}
 \seealso{
     \code{\link{seqAnnotList}}, \code{\link{seqValueCounts}},
-    \code{\link{seqToGDS_FAVOR}}, \code{\link{seqToGDS_VEP}}
+    \code{\link{seqFAVOR2GDS}}, \code{\link{seqVEP2GDS}}
 }
 
 \examples{
@@ -178,6 +178,23 @@ if (requireNamespace("VariantAnnotation", quietly=TRUE))
     res2 <- seqAnnotate(vcf, annot_gds, varnm=c("rsid", "cadd_phred"))
     print(identical(res, res2))
 }
+
+# the variants of a SeqArray GDS file (the gnomAD sites of the same region)
+gds_fn <- system.file("extdata", "gnomad.genomes.v4.chr22_sub.gds",
+    package="GDSAnnotator")
+res <- seqAnnotateGDS(gds_fn, annot_gds, varnm=c("rsid", "cadd_phred"))
+head(res[!is.na(res$cadd_phred), ])
+
+# write the annotations to a new GDS file
+out_fn <- tempfile(fileext=".gds")
+seqAnnotateGDS(gds_fn, annot_gds, varnm=c("rsid", "cadd_phred"),
+    add_to_gds=out_fn)
+f <- seqOpen(out_fn)
+head(seqGetData(f, "annotation/info/cadd_phred"))
+seqClose(f)
+
+# delete the temporary file
+unlink(out_fn, force=TRUE)
 }
 
 \keyword{gds}

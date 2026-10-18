@@ -30,9 +30,9 @@ annotations of the variants of a study are written into its genotype GDS file
 (with the FAVOR annotations, this produces an aGDS file).
 
     \itemize{
-        \item Import: \code{\link{seqToGDS_FAVOR}},
-            \code{\link{seqToGDS_gnomAD}}, \code{\link{seqToGDS_VEP}},
-            \code{\link{seqToGDS_SnpEff}} and \code{\link{seqToGDS_ANNOVAR}}
+        \item Import: \code{\link{seqFAVOR2GDS}},
+            \code{\link{seqGnomAD2GDS}}, \code{\link{seqVEP2GDS}},
+            \code{\link{seqSnpEff2GDS}} and \code{\link{seqANNOVAR2GDS}}
             convert the annotation resources and the outputs of the
             annotators to GDS files.
         \item Annotate: \code{\link{seqAnnotate}} annotates variants given as

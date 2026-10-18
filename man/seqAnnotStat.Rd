@@ -49,8 +49,8 @@ derived from the nodes "chromosome", "position", "allele", "annotation/id",
 
     The annotation statistics are calculated when the GDS file contains the
 sub-fields of Ensembl-VEP ("annotation/info/CSQ.list", see
-\code{\link{seqToGDS_VEP}}) or SnpEff ("annotation/info/ANN.list", see
-\code{\link{seqToGDS_SnpEff}}). Both annotators report Sequence Ontology
+\code{\link{seqVEP2GDS}}) or SnpEff ("annotation/info/ANN.list", see
+\code{\link{seqSnpEff2GDS}}). Both annotators report Sequence Ontology
 terms, and an internal table ("so_consequence.csv" in the "extdata" folder)
 is used to rank the consequences by severity, to classify them into impact
 categories (HIGH, MODERATE, LOW and MODIFIER), into functional classes

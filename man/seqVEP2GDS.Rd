@@ -1,11 +1,11 @@
-\name{seqToGDS_VEP}
-\alias{seqToGDS_VEP}
+\name{seqVEP2GDS}
+\alias{seqVEP2GDS}
 \title{Reformat Ensembl-VEP VCF}
 \description{
     Convert Ensembl-VEP VCF output to a SeqArray GDS file.
 }
 \usage{
-seqToGDS_VEP(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
+seqVEP2GDS(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     root="CSQ", keep=FALSE, bsize=50000L, verbose=TRUE)
 }
 \arguments{
@@ -43,7 +43,7 @@ vcf_fn <- system.file("extdata", "example_wgs_sites_chr22_vep.vcf.gz",
     package="GDSAnnotator")
 
 out_fn <- tempfile(fileext=".gds")
-seqToGDS_VEP(vcf_fn, out_fn)
+seqVEP2GDS(vcf_fn, out_fn)
 
 # list the annotations in the output file
 seqAnnotList(out_fn)

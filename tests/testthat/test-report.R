@@ -66,10 +66,10 @@ test_that("seqAnnotGeneTable returns the per-gene counts", {
     st <- seqAnnotStat(snpeff_gds(), verbose=FALSE)
     tab <- seqAnnotGeneTable(st)
     expect_s3_class(tab, "data.frame")
-    expect_equal(names(tab)[1:2], c("gene", "total"))
+    expect_equal(names(tab)[seq_len(2L)], c("gene", "total"))
     expect_equal(sum(tab$total), sum(st$counts$gene_impact))
     expect_true(all(diff(tab$total) <= 0))
-    expect_equal(unname(rowSums(tab[, -(1:2), drop=FALSE])), tab$total)
+    expect_equal(unname(rowSums(tab[, -c(1L, 2L), drop=FALSE])), tab$total)
     # NULL when there is no gene annotation
     st0 <- seqAnnotStat(ex_file("gnomad.genomes.v4.chr22_sub.gds"),
         verbose=FALSE)

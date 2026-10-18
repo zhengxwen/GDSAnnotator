@@ -1,11 +1,11 @@
-\name{seqToGDS_SnpEff}
-\alias{seqToGDS_SnpEff}
+\name{seqSnpEff2GDS}
+\alias{seqSnpEff2GDS}
 \title{Reformat SnpEff VCF}
 \description{
     Convert SnpEff VCF output to a SeqArray GDS file.
 }
 \usage{
-seqToGDS_SnpEff(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
+seqSnpEff2GDS(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     root=c("ANN", "LOF", "NMD"), keep=FALSE, bsize=50000L, verbose=TRUE)
 }
 \arguments{
@@ -44,7 +44,7 @@ vcf_fn <- system.file("extdata", "example_wgs_sites_chr22_snpeff.vcf.gz",
     package="GDSAnnotator")
 
 out_fn <- tempfile(fileext=".gds")
-seqToGDS_SnpEff(vcf_fn, out_fn)
+seqSnpEff2GDS(vcf_fn, out_fn)
 
 # list the annotations in the output file
 seqAnnotList(out_fn)

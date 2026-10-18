@@ -1,5 +1,5 @@
-\name{seqToGDS_ANNOVAR}
-\alias{seqToGDS_ANNOVAR}
+\name{seqANNOVAR2GDS}
+\alias{seqANNOVAR2GDS}
 \title{Reformat ANNOVAR VCF}
 \description{
     Convert ANNOVAR-annotated VCF output (from \code{table_annovar.pl}) to a
@@ -11,7 +11,7 @@
     descriptions and type information for known ANNOVAR annotation columns.
 }
 \usage{
-seqToGDS_ANNOVAR(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
+seqANNOVAR2GDS(vcf_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     keep=TRUE, verbose=TRUE)
 }
 \arguments{
@@ -51,8 +51,8 @@ variants from high-throughput sequencing data. Nucleic Acids Research,
 
 \author{Xiuwen Zheng}
 \seealso{
-    \code{\link[SeqArray]{seqVCF2GDS}}, \code{\link{seqToGDS_VEP}},
-    \code{\link{seqToGDS_SnpEff}}
+    \code{\link[SeqArray]{seqVCF2GDS}}, \code{\link{seqVEP2GDS}},
+    \code{\link{seqSnpEff2GDS}}
 }
 
 \examples{
@@ -61,7 +61,7 @@ vcf_fn <- system.file("extdata", "example_wgs_sites_chr22_annovar.vcf.gz",
     package="GDSAnnotator")
 
 out_fn <- tempfile(fileext=".gds")
-seqToGDS_ANNOVAR(vcf_fn, out_fn)
+seqANNOVAR2GDS(vcf_fn, out_fn)
 
 # list the annotations in the output file
 seqAnnotList(out_fn)
