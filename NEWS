@@ -1,3 +1,27 @@
+CHANGES IN VERSION 0.99.3
+-------------------------
+
+    o New function `seqAnnotOpen()` returning a `SeqAnnotGDSList` object, which
+      opens the annotation GDS files once for more than one call of
+      `seqAnnotate()`; the object lists the files with their chromosomes and
+      numbers of variants in `mcols()`, and the files are closed by
+      `seqClose()`
+
+    o An annotation GDS file can contain more than one chromosome, instead of
+      one chromosome per file
+
+    o new 'parallel' in `seqAnnotateGDS()` and in `seqAnnotate()` for a
+      SeqArray GDS file, when 'add_to_gds' is TRUE or a file name: the
+      annotation variables are distributed to R processes started by
+      `parallel::makeCluster()` (no forking), each process writes one
+      variable at a time to a temporary GDS file, and the variables are
+      copied to the output file in the order of 'varnm', so that the output
+      does not depend on 'parallel'
+
+    o With 'add_to_gds', the values of a block are kept as vectors instead of
+      a list with one element per variant
+
+
 CHANGES IN VERSION 0.99.2
 -------------------------
 
@@ -11,8 +35,7 @@ CHANGES IN VERSION 0.99.2
     o New help page `?GDSAnnotator-extdata` describing the example data;
       'inst/script' is renamed to 'inst/scripts'
 
-    o Internal code reorganized into smaller functions, without changing the
-      outputs; the benchmark script is removed from 'inst'
+    o The benchmark script is removed from 'inst'
 
 
 CHANGES IN VERSION 0.99.1

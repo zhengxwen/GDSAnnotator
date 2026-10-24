@@ -15,8 +15,8 @@ data stored in Genomic Data Structure (GDS) files.
         Depends: \tab gdsfmt, SeqArray \cr
     }
 
-    The package stores per-variant annotations in SeqArray GDS files, one
-chromosome per file, under the node "annotation/info". The columnar, typed
+    The package stores per-variant annotations in SeqArray GDS files, usually
+one chromosome per file, under the node "annotation/info". The columnar, typed
 and block-compressed layout is compact and supports random access, so a small
 set of variants can be annotated without reading the whole database.
 
@@ -40,7 +40,8 @@ annotations of the variants of a study are written into its genotype GDS file
             \code{DataFrame}, a \code{GRanges} object, a \code{VCF} object
             or file (\code{\link{seqAnnotateVCF}}) or a SeqArray GDS file
             (\code{\link{seqAnnotateGDS}}), and can write the annotations
-            back into a GDS file block by block.
+            back into a GDS file block by block; \code{\link{seqAnnotOpen}}
+            opens the annotation files once for more than one call.
         \item Explore & summarize: \code{\link{seqAnnotList}} lists the
             annotations in a file, \code{\link{seqValueCounts}} tabulates
             their values, and \code{\link{seqAnnotStat}},

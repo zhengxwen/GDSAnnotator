@@ -17,7 +17,6 @@
 # (potentially) across parallel workers with the same piece of code.
 #
 
-# a new accumulator
 .acc_new <- function() new.env(parent=emptyenv())
 
 # add a named count vector to the accumulator slot 'key'
@@ -88,7 +87,6 @@
 # and SnpEff both report SO terms, so the two sources share the code.
 #
 
-# the SO consequence table 'so_consequence.csv', cached in .packageEnv
 .so_table <- function()
 {
     if (is.null(.packageEnv$so))
@@ -147,7 +145,6 @@
 .annot_slots <- c("consequence", "impact", "gene", "gene_id", "feature",
     "feature_type", "biotype", "sift", "polyphen", "errors")
 
-# the annotation profile (VEP or SnpEff) of a GDS file, or NULL if none
 .annot_profile <- function(f)
 {
     hit <- function(s) !is.null(index.gdsn(f, s, silent=TRUE))
@@ -169,9 +166,12 @@
     } else
         return(NULL)
     # keep only the sub-fields that really exist in the GDS file
-    ok <- vapply(.annot_slots, function(s)
-        !is.na(pf[[s]]) && hit(paste0(pf$root, "/", pf[[s]])), FALSE)
-    pf[.annot_slots[!ok]] <- NA_character_
+    for (s in .annot_slots)
+    {
+        v <- pf[[s]]
+        if (is.na(v) || !hit(paste0(pf$root, "/", v)))
+            pf[[s]] <- NA_character_
+    }
     pf
 }
 
@@ -180,7 +180,6 @@
 # Internal: statistics derived from the 'allele' node
 #
 
-# the allele counters of a block
 .stat_allele <- function(e, al)
 {
     # split "REF,ALT1,ALT2,..." without expanding the bi-allelic majority
@@ -240,119 +239,20 @@
     varnm <- c(chr="chromosome", pos="position", allele="allele")
     v <- c(id="annotation/id", qual="annotation/qual",
         filter="annotation/filter")
-    ok <- vapply(v, function(s) !is.null(index.gdsn(f, s, silent=TRUE)),
-        FALSE)
-    varnm <- c(varnm, v[ok])
+    for (i in seq_along(v))
+    {
+        if (!is.null(index.gdsn(f, v[i], silent=TRUE)))
+            varnm[names(v)[i]] <- v[i]
+    }
     if (!is.null(pf))
     {
-        s <- unlist(pf[.annot_slots])
-        s <- s[!is.na(s)]
-        v <- paste0(pf$root, "/", s)
-        names(v) <- names(s)
-        varnm <- c(varnm, v)
-    }
-    varnm
-}
-
-# the variant-level counters of a block
-.stat_variant <- function(e, x)
-{
-    .acc_tab(e, "chrom", x$chr)
-    .acc_minmax(e, "pos_min", vapply(split(x$pos, x$chr), min, 0L), pmin)
-    .acc_minmax(e, "pos_max", vapply(split(x$pos, x$chr), max, 0L), pmax)
-    .stat_allele(e, x$allele)
-    if (!is.null(x$id))
-    {
-        v <- !is.na(x$id) & nzchar(x$id) & x$id!="."
-        .acc_add(e, "known", c(known=sum(v), novel=sum(!v)))
-    }
-    if (!is.null(x$qual))
-    {
-        v <- is.na(x$qual)
-        if (any(v)) .acc_add(e, "qual_na", c(`NA`=sum(v)))
-        if (!all(v))
-            .acc_add(e, "qual", table(cut(x$qual[!v], .qual_break)))
-    }
-    if (!is.null(x$filter))
-        .acc_tab(e, "filter", as.character(x$filter))
-    invisible()
-}
-
-# the consequence counters of a block
-.stat_consequence <- function(e, x, so)
-{
-    ns <- x$consequence$length
-    d <- x$consequence$data
-    .acc_add(e, "n_annot", c(n=length(d)))
-    # (a) all consequence terms, with '&' expanded
-    trm <- .so_split(d)
-    .acc_tab(e, "cons_all", trm)
-    # (b) genomic region & functional class of every term
-    i <- match(trm, so$Term)
-    .acc_tab(e, "region", so$Region[i])
-    v <- so$Class[i]
-    .acc_tab(e, "func_class", v[!is.na(v) & nzchar(v)])
-    # (c) the most severe consequence of each variant
-    rk <- .so_rank(d)
-    iv <- rep.int(seq_along(ns), ns)
-    k <- order(iv, rk, na.last=TRUE)
-    k <- k[!duplicated(iv[k])]
-    i <- match(rk[k], so$Rank)
-    .acc_tab(e, "cons_severe", so$Term[i])
-    .acc_tab(e, "impact_severe", so$Impact[i])
-    invisible()
-}
-
-# the counters of the annotation records of a block
-.stat_annot <- function(e, x, so)
-{
-    if (!is.null(x$consequence))
-        .stat_consequence(e, x, so)
-    # each slot is added to its own counter
-    for (s in c("impact", "biotype", "feature_type", "feature", "sift",
-        "polyphen"))
-    {
-        v <- x[[s]]
-        if (!is.null(v))
+        for (s in .annot_slots)
         {
-            v <- v$data
-            v <- v[!is.na(v) & nzchar(v)]
-            # e.g., SIFT is stored as "deleterious(0.02)"
-            if (s=="sift" || s=="polyphen") v <- sub("\\(.*$", "", v)
-            .acc_tab(e, s, v)
+            if (!is.na(pf[[s]]))
+                varnm[s] <- paste0(pf$root, "/", pf[[s]])
         }
     }
-    if (!is.null(x$errors))
-    {
-        v <- x$errors$data
-        .acc_tab(e, "errors", .so_split(v[!is.na(v) & nzchar(v)]))
-    }
-    # gene x impact counts (the SnpEff 'genes.txt' equivalent)
-    if (!is.null(x$gene))
-    {
-        g <- x$gene$data
-        im <- if (!is.null(x$impact)) x$impact$data else
-            rep.int("", length(g))
-        i <- !is.na(g) & nzchar(g)
-        if (any(i))
-            .acc_tab(e, "gene_impact", paste0(g[i], "\r", im[i]))
-    }
-    invisible()
-}
-
-# update all the counters with a block returned by seqBlockApply()
-.stat_block <- function(e, x, nm, so)
-{
-    names(x) <- nm
-    n <- length(x$chr)
-    .acc_add(e, "n_var", c(n=n))
-    # ---- variant-level statistics
-    .stat_variant(e, x)
-    # ---- annotation records
-    s <- intersect(.annot_slots, names(x))
-    x[s] <- lapply(x[s], .as_datalist, n=n)
-    .stat_annot(e, x, so)
-    invisible()
+    varnm
 }
 
 # update all the counters over the selected variants, and return them as a
@@ -361,10 +261,92 @@
 {
     e <- .acc_new()
     so <- .so_table()
+
     # block-by-block processing, all the counters are updated at once
     seqBlockApply(f, unname(varnm), function(x)
-        .stat_block(e, x, names(varnm), so),
-        as.is="none", bsize=bsize, .progress=verbose)
+    {
+        names(x) <- names(varnm)
+        n <- length(x$chr)
+        .acc_add(e, "n_var", c(n=n))
+
+        # ---- variant-level statistics
+        .acc_tab(e, "chrom", x$chr)
+        .acc_minmax(e, "pos_min", vapply(split(x$pos, x$chr), min, 0L), pmin)
+        .acc_minmax(e, "pos_max", vapply(split(x$pos, x$chr), max, 0L), pmax)
+        .stat_allele(e, x$allele)
+        if (!is.null(x$id))
+        {
+            v <- !is.na(x$id) & nzchar(x$id) & x$id!="."
+            .acc_add(e, "known", c(known=sum(v), novel=sum(!v)))
+        }
+        if (!is.null(x$qual))
+        {
+            v <- is.na(x$qual)
+            if (any(v)) .acc_add(e, "qual_na", c(`NA`=sum(v)))
+            if (!all(v))
+                .acc_add(e, "qual", table(cut(x$qual[!v], .qual_break)))
+        }
+        if (!is.null(x$filter))
+            .acc_tab(e, "filter", as.character(x$filter))
+
+        # ---- annotation records
+        for (s in .annot_slots)
+        {
+            if (!is.null(x[[s]])) x[[s]] <- .as_datalist(x[[s]], n)
+        }
+        if (!is.null(x$consequence))
+        {
+            ns <- x$consequence$length
+            d <- x$consequence$data
+            .acc_add(e, "n_annot", c(n=length(d)))
+            # (a) all consequence terms, with '&' expanded
+            trm <- .so_split(d)
+            .acc_tab(e, "cons_all", trm)
+            # (b) genomic region & functional class of every term
+            i <- match(trm, so$Term)
+            .acc_tab(e, "region", so$Region[i])
+            v <- so$Class[i]
+            .acc_tab(e, "func_class", v[!is.na(v) & nzchar(v)])
+            # (c) the most severe consequence of each variant
+            rk <- .so_rank(d)
+            iv <- rep.int(seq_along(ns), ns)
+            k <- order(iv, rk, na.last=TRUE)
+            k <- k[!duplicated(iv[k])]
+            i <- match(rk[k], so$Rank)
+            .acc_tab(e, "cons_severe", so$Term[i])
+            .acc_tab(e, "impact_severe", so$Impact[i])
+        }
+        for (s in c("impact", "biotype", "feature_type", "feature", "sift",
+            "polyphen"))
+        {
+            v <- x[[s]]
+            if (!is.null(v))
+            {
+                v <- v$data
+                v <- v[!is.na(v) & nzchar(v)]
+                # e.g., SIFT is stored as "deleterious(0.02)"
+                if (s=="sift" || s=="polyphen") v <- sub("\\(.*$", "", v)
+                .acc_tab(e, s, v)
+            }
+        }
+        if (!is.null(x$errors))
+        {
+            v <- x$errors$data
+            .acc_tab(e, "errors", .so_split(v[!is.na(v) & nzchar(v)]))
+        }
+        # gene x impact counts (the SnpEff 'genes.txt' equivalent)
+        if (!is.null(x$gene))
+        {
+            g <- x$gene$data
+            im <- if (!is.null(x$impact)) x$impact$data else
+                rep.int("", length(g))
+            i <- !is.na(g) & nzchar(g)
+            if (any(i))
+                .acc_tab(e, "gene_impact", paste0(g[i], "\r", im[i]))
+        }
+        NULL  # return
+    }, as.is="none", bsize=bsize, .progress=verbose)
+
     # return
     as.list(e)
 }
@@ -387,11 +369,11 @@
         nm)]
     impact_lv <- names(.impact_color)
     qual_lv <- levels(cut(numeric(), .qual_break))
-    cnt[] <- lapply(names(cnt), function(s)
+    for (s in names(cnt))
     {
         v <- cnt[[s]]
         nm <- names(v)
-        if (is.null(nm) || length(v) < 2L) return(v)
+        if (is.null(nm) || length(v) < 2L) next
         i <- switch(s,
             chrom = , pos_min = , pos_max = .chrom_order(nm),
             qual = order(match(nm, qual_lv)),
@@ -399,8 +381,8 @@
             impact = , impact_severe = order(
                 match(nm, impact_lv, nomatch=length(impact_lv)+1L), nm),
             order(nm))
-        v[i]
-    })
+        cnt[[s]] <- v[i]
+    }
     cnt
 }
 
@@ -429,32 +411,6 @@
 }
 
 
-# the sorted counters and the number of the selected variants
-.stat_counts <- function(f, varnm, parallel, bsize, verbose)
-{
-    # the counters are additive, so each process works on its own subset of
-    # the variants and the results are merged by .counts_merge()
-    if (is.null(parallel) || isFALSE(parallel) || identical(parallel, 1L))
-    {
-        cnt <- .stat_core(f, varnm, bsize, verbose)
-    } else {
-        cnt <- seqParallel(parallel, f, FUN=function(f, varnm, bsize)
-            {
-                .stat_core(f, varnm, bsize, verbose=FALSE)
-            }, split="by.variant", .combine=.counts_merge,
-            varnm=varnm, bsize=bsize)
-    }
-    n_var <- if (is.null(cnt$n_var)) 0L else as.integer(cnt$n_var[[1L]])
-    cnt$n_var <- NULL
-    list(counts=.counts_sort(cnt), n_var=n_var)
-}
-
-# Calculate the summary statistics from GDS file(s)
-#   gdsfile: the GDS file name(s), or an opened GDS file
-#   parallel: FALSE, or the processes passed to seqParallel()
-#   bsize: the number of variants in a block
-#   verbose: if TRUE, show the progress information
-# return a SeqAnnotStat object
 seqAnnotStat <- function(gdsfile, parallel=FALSE, bsize=100000L, verbose=TRUE)
 {
     # check
@@ -463,7 +419,10 @@ seqAnnotStat <- function(gdsfile, parallel=FALSE, bsize=100000L, verbose=TRUE)
     # multiple files: calculate one by one and merge the counters
     if (is.character(gdsfile))
     {
-        .check_gds_fn(gdsfile)
+        if (length(gdsfile) == 0L)
+            stop("'gdsfile' should be a file name.")
+        if (anyNA(gdsfile))
+            stop("'gdsfile' should not contain NA.")
         if (length(gdsfile) > 1L)
         {
             lst <- lapply(seq_along(gdsfile), function(i)
@@ -489,8 +448,24 @@ seqAnnotStat <- function(gdsfile, parallel=FALSE, bsize=100000L, verbose=TRUE)
 
     # the annotation source (VEP, SnpEff, or none)
     pf <- .annot_profile(f)
-    cnt <- .stat_counts(f, .stat_varnm(f, pf), parallel, as.integer(bsize),
-        verbose)
+    varnm <- .stat_varnm(f, pf)
+    bsize <- as.integer(bsize)
+
+    # the counters are additive, so each process works on its own subset of
+    # the variants and the results are merged by .counts_merge()
+    if (is.null(parallel) || isFALSE(parallel) || identical(parallel, 1L))
+    {
+        cnt <- .stat_core(f, varnm, bsize, verbose)
+    } else {
+        cnt <- seqParallel(parallel, f, FUN=function(f, varnm, bsize)
+            {
+                .stat_core(f, varnm, bsize, verbose=FALSE)
+            }, split="by.variant", .combine=.counts_merge,
+            varnm=varnm, bsize=bsize)
+    }
+    n_var <- if (is.null(cnt$n_var)) 0L else as.integer(cnt$n_var[[1L]])
+    cnt$n_var <- NULL
+    cnt <- .counts_sort(cnt)
 
     # the VCF header, for the annotator version & command line
     hd <- NULL
@@ -498,9 +473,9 @@ seqAnnotStat <- function(gdsfile, parallel=FALSE, bsize=100000L, verbose=TRUE)
     if (!is.null(nd)) hd <- read.gdsn(nd)
 
     # output
-    ans <- list(file=fn, filesize=file.size(fn), n_variant=cnt$n_var,
+    ans <- list(file=fn, filesize=file.size(fn), n_variant=n_var,
         source=if (is.null(pf)) "unknown" else pf$source, profile=pf,
-        header=hd, counts=cnt$counts, created=Sys.time())
+        header=hd, counts=cnt, created=Sys.time())
     class(ans) <- "SeqAnnotStat"
     ans
 }
@@ -538,7 +513,6 @@ print.SeqAnnotStat <- function(x, ...)
 
 # Return the per-gene counts as a data.frame (the SnpEff 'genes.txt'
 # equivalent): one row per gene, one column per impact category
-#   stat: a SeqAnnotStat object
 seqAnnotGeneTable <- function(stat)
 {
     stopifnot(inherits(stat, "SeqAnnotStat"))
@@ -596,32 +570,37 @@ seqAnnotGeneTable <- function(stat)
 # order the chromosomes numerically, then alphabetically
 .chrom_order <- function(s)
 {
-    # the numeric chromosome names, NA for the others (e.g., "X")
-    x <- sub("^chr", "", s)
-    v <- rep(NA_integer_, length(x))
-    k <- grepl("^[0-9]+$", x)
-    v[k] <- as.integer(x[k])
+    v <- suppressWarnings(as.integer(sub("^chr", "", s)))
     i <- is.na(v)
     if (any(i)) v[i] <- 1000L + order(s[i])
     order(v)
 }
 
-# a report section with a title and the items, as a list of one section, so
-#   that the sections can be combined with c()
-.sec <- function(title, ...) list(list(title=title, items=list(...)))
-
-# the section of the general information
-.rep_general <- function(stat)
+.rep_sections <- function(stat)
 {
     cnt <- stat$counts
+    hd <- stat$header
+    # the sections are collected in the package-wide environment .packageEnv
+    #   (instead of a superassignment), and removed on exit
+    .packageEnv$rep_sec <- list()
+    on.exit(.packageEnv$rep_sec <- NULL)
+    add <- function(title, ...)
+    {
+        .packageEnv$rep_sec <- c(.packageEnv$rep_sec,
+            list(list(title=title, items=list(...))))
+    }
+
+    # ---- general information
     gi <- c("Report generated"=format(stat$created, "%Y-%m-%d %H:%M:%S"),
         "GDS file"=paste(basename(stat$file), collapse=", "),
         "File size"=paste(format(round(sum(stat$filesize)/1024^2, 1)), "MB"),
         "Annotation source"=stat$source)
-    # the annotator version & command line in the VCF header
-    v <- vapply(c("VEP", "VEP-command-line", "SnpEffVersion", "SnpEffCmd",
-        "source", "reference"), function(s) .hdr_val(stat$header, s), "")
-    gi <- c(gi, v[!is.na(v)])
+    for (s in c("VEP", "VEP-command-line", "SnpEffVersion", "SnpEffCmd",
+        "source", "reference"))
+    {
+        v <- .hdr_val(hd, s)
+        if (!is.na(v)) gi[s] <- v
+    }
     gi["# of variants"] <- .fmt(stat$n_variant)
     if (!is.null(cnt$n_annot))
         gi["# of annotation records"] <- .fmt(cnt$n_annot[[1L]])
@@ -639,124 +618,100 @@ seqAnnotGeneTable <- function(stat)
         gi["Variant rate"] <- paste("one variant every",
             .fmt(round(v/stat$n_variant)), "bases")
     }
-    .sec("General information", .item("kv", key=names(gi), value=unname(gi)))
-}
+    add("General information", .item("kv", key=names(gi), value=unname(gi)))
 
-# the variant-level sections
-.rep_variant <- function(cnt)
-{
+    # ---- variant-level sections
     v <- cnt$chrom[.chrom_order(names(cnt$chrom))]
-    indel <- cnt$indel_len
-    if (!is.null(indel))
+    add("Variants by chromosome",
+        .item("col", tab=v, sorted=FALSE,
+            colnm=c("Chromosome", "Count", "Percentage")),
+        .item("table", tab=v, sorted=FALSE,
+            colnm=c("Chromosome", "Count", "Percentage")))
+    add("Variant classes", .item("bar", tab=cnt$var_class),
+        .item("table", tab=cnt$var_class))
+    add("Base changes (SNVs)", .item("basechange", tab=cnt$base_change))
+    if (!is.null(cnt$indel_len))
     {
-        indel <- indel[order(as.integer(names(indel)))]
+        v <- cnt$indel_len
+        v <- v[order(as.integer(names(v)))]
         # the length is truncated at +/- 20bp in seqAnnotStat()
-        names(indel)[names(indel) == "-21"] <- "<=-21"
-        names(indel)[names(indel) ==  "21"] <- ">=21"
-    }
-    c(.sec("Variants by chromosome",
+        names(v)[names(v) == "-21"] <- "<=-21"
+        names(v)[names(v) ==  "21"] <- ">=21"
+        add("InDel length distribution",
             .item("col", tab=v, sorted=FALSE,
-                colnm=c("Chromosome", "Count", "Percentage")),
-            .item("table", tab=v, sorted=FALSE,
-                colnm=c("Chromosome", "Count", "Percentage"))),
-        .sec("Variant classes", .item("bar", tab=cnt$var_class),
-            .item("table", tab=cnt$var_class)),
-        .sec("Base changes (SNVs)", .item("basechange", tab=cnt$base_change)),
-        if (!is.null(indel))
-        {
-            .sec("InDel length distribution",
-                .item("col", tab=indel, sorted=FALSE, color="#e8913a",
-                    colnm=c("InDel length (bp)", "Count", "Percentage")))
-        },
-        .sec("Number of alleles per variant",
-            .item("table", tab=cnt$n_allele, sorted=FALSE,
-                colnm=c("# of alleles", "Count", "Percentage"))),
-        if (!is.null(cnt$known))
-        {
-            .sec("Known vs. novel (the ID field)",
-                .item("table", tab=cnt$known))
-        },
-        if (!is.null(cnt$filter))
-            .sec("FILTER", .item("table", tab=cnt$filter)),
-        if (!is.null(cnt$qual))
-            .sec("QUAL distribution", .item("bar", tab=cnt$qual, sorted=FALSE))
-    )
-}
-
-# the sections of the consequences, impacts and functional classes
-.rep_effect <- function(cnt)
-{
-    v <- cnt$func_class
-    fc <- list(.item("bar", tab=v, color="#4a9d5b"), .item("table", tab=v))
-    if (all(c("MISSENSE", "SILENT") %in% names(v)))
-    {
-        fc <- c(fc, list(.item("note", text=sprintf(
-            "Missense / Silent ratio = %.4f", v[["MISSENSE"]]/v[["SILENT"]]),
-            bold=TRUE)))
+                color="#e8913a",
+                colnm=c("InDel length (bp)", "Count", "Percentage")))
     }
-    c(if (!is.null(cnt$cons_all))
-        {
-            c(.sec("Consequences (all annotation records)",
-                    .item("bar", tab=cnt$cons_all),
-                    .item("table", tab=cnt$cons_all)),
-                .sec("Consequences (most severe per variant)",
-                    .item("bar", tab=cnt$cons_severe),
-                    .item("table", tab=cnt$cons_severe)),
-                .sec("Variants by region",
-                    .item("bar", tab=cnt$region, color="#7a5ea8")))
-        },
-        if (!is.null(cnt$impact))
-        {
-            .sec("Effects by impact (all records)",
-                .item("bar", tab=cnt$impact, color=.impact_color,
-                    sorted=FALSE),
-                .item("table", tab=cnt$impact))
-        },
-        if (!is.null(cnt$impact_severe))
-        {
-            .sec("Impact (most severe per variant)",
-                .item("bar", tab=cnt$impact_severe, color=.impact_color,
-                    sorted=FALSE))
-        },
-        if (!is.null(v))
-            list(list(title="Effects by functional class", items=fc))
-    )
-}
+    add("Number of alleles per variant",
+        .item("table", tab=cnt$n_allele, sorted=FALSE,
+            colnm=c("# of alleles", "Count", "Percentage")))
+    if (!is.null(cnt$known))
+        add("Known vs. novel (the ID field)", .item("table", tab=cnt$known))
+    if (!is.null(cnt$filter))
+        add("FILTER", .item("table", tab=cnt$filter))
+    if (!is.null(cnt$qual))
+        add("QUAL distribution", .item("bar", tab=cnt$qual, sorted=FALSE))
 
-# the sections of the other annotation records
-.rep_annot <- function(cnt)
-{
-    g <- cnt$gene_impact
-    if (!is.null(g))
-        g <- vapply(split(unname(g), sub("\r.*$", "", names(g))), sum, 0)
-    c(.rep_effect(cnt),
-        if (!is.null(cnt$biotype))
-            .sec("Transcript biotypes", .item("bar", tab=cnt$biotype)),
-        if (!is.null(cnt$feature_type))
-            .sec("Feature types", .item("table", tab=cnt$feature_type)),
-        if (!is.null(cnt$sift))
-            .sec("SIFT predictions", .item("table", tab=cnt$sift)),
-        if (!is.null(cnt$polyphen))
-            .sec("PolyPhen predictions", .item("table", tab=cnt$polyphen)),
-        if (!is.null(cnt$errors))
+    # ---- annotation sections
+    if (!is.null(cnt$cons_all))
+    {
+        add("Consequences (all annotation records)",
+            .item("bar", tab=cnt$cons_all), .item("table", tab=cnt$cons_all))
+        add("Consequences (most severe per variant)",
+            .item("bar", tab=cnt$cons_severe),
+            .item("table", tab=cnt$cons_severe))
+        add("Variants by region",
+            .item("bar", tab=cnt$region, color="#7a5ea8"))
+    }
+    if (!is.null(cnt$impact))
+    {
+        add("Effects by impact (all records)",
+            .item("bar", tab=cnt$impact, color=.impact_color, sorted=FALSE),
+            .item("table", tab=cnt$impact))
+    }
+    if (!is.null(cnt$impact_severe))
+    {
+        add("Impact (most severe per variant)",
+            .item("bar", tab=cnt$impact_severe, color=.impact_color,
+                sorted=FALSE))
+    }
+    if (!is.null(cnt$func_class))
+    {
+        v <- cnt$func_class
+        it <- list(.item("bar", tab=v, color="#4a9d5b"), .item("table", tab=v))
+        if (all(c("MISSENSE", "SILENT") %in% names(v)))
         {
-            .sec("Warnings & errors reported by the annotator",
-                .item("table", tab=cnt$errors))
-        },
-        if (!is.null(g))
-        {
-            .sec("Top annotated genes", .item("bar", tab=g, top=20L),
-                .item("note", text=paste("The full gene-by-impact table is",
-                    "available from seqAnnotGeneTable().")))
+            it <- c(it, list(.item("note", text=sprintf(
+                "Missense / Silent ratio = %.4f",
+                v[["MISSENSE"]]/v[["SILENT"]]),
+                bold=TRUE)))
         }
-    )
-}
+        .packageEnv$rep_sec <- c(.packageEnv$rep_sec,
+            list(list(title="Effects by functional class", items=it)))
+    }
+    if (!is.null(cnt$biotype))
+        add("Transcript biotypes", .item("bar", tab=cnt$biotype))
+    if (!is.null(cnt$feature_type))
+        add("Feature types", .item("table", tab=cnt$feature_type))
+    if (!is.null(cnt$sift))
+        add("SIFT predictions", .item("table", tab=cnt$sift))
+    if (!is.null(cnt$polyphen))
+        add("PolyPhen predictions", .item("table", tab=cnt$polyphen))
+    if (!is.null(cnt$errors))
+    {
+        add("Warnings & errors reported by the annotator",
+            .item("table", tab=cnt$errors))
+    }
+    if (!is.null(cnt$gene_impact))
+    {
+        v <- cnt$gene_impact
+        v <- vapply(split(unname(v), sub("\r.*$", "", names(v))), sum, 0)
+        add("Top annotated genes", .item("bar", tab=v, top=20L),
+            .item("note", text=paste("The full gene-by-impact table is",
+                "available from seqAnnotGeneTable().")))
+    }
 
-# all the sections of the report
-.rep_sections <- function(stat)
-{
-    c(.rep_general(stat), .rep_variant(stat$counts),
-        .rep_annot(stat$counts))
+    .packageEnv$rep_sec
 }
 
 # sort and truncate a count vector, as requested by a 'bar' item
@@ -776,13 +731,12 @@ seqAnnotGeneTable <- function(stat)
 {
     b <- c("A", "C", "G", "T")
     m <- matrix(0, 4L, 4L, dimnames=list(b, b))
-    # the REF and ALT alleles of each base change "REF>ALT"
-    r <- sub(">.*$", "", names(tab))
-    a <- sub("^[^>]*>", "", names(tab))
-    k <- grepl(">", names(tab), fixed=TRUE) & r %in% b & a %in% b
-    v <- tapply(as.double(tab[k]), list(factor(r[k], b), factor(a[k], b)),
-        sum)
-    m[!is.na(v)] <- v[!is.na(v)]
+    s <- strsplit(names(tab), ">", fixed=TRUE)
+    for (i in seq_along(tab))
+    {
+        r <- s[[i]][1L]; a <- s[[i]][2L]
+        if (r %in% b && a %in% b) m[r, a] <- m[r, a] + tab[[i]]
+    }
     n_ts <- m["A","G"] + m["G","A"] + m["C","T"] + m["T","C"]
     list(m=m, n_ts=n_ts, n_tv=sum(m) - n_ts - sum(diag(m)))
 }
@@ -796,7 +750,6 @@ seqAnnotGeneTable <- function(stat)
 # that can be viewed offline.
 #
 
-# escape the HTML special characters
 .esc <- function(s)
 {
     s <- gsub("&", "&amp;", s, fixed=TRUE)
@@ -961,11 +914,9 @@ code{background:#f4f4f4;padding:1px 4px}'
 # with block characters, so the output is readable as plain text as well.
 #
 
-# escape the pipe characters
 .md_esc <- function(s)
     gsub("|", "\\|", s, fixed=TRUE)
 
-# bars of block characters for the counts
 .md_bar <- function(x, width=24L)
 {
     n <- as.integer(round(width * x / max(x)))
@@ -973,7 +924,6 @@ code{background:#f4f4f4;padding:1px 4px}'
     vapply(n, function(i) strrep("\u2588", max(i, 1L)), "")
 }
 
-# a Markdown pipe table
 .md_table <- function(colnm, ...)
 {
     col <- list(...)
@@ -1091,7 +1041,6 @@ code{background:#f4f4f4;padding:1px 4px}'
     paste0("structure(", .rmd_data(x), ",\n    names = ",
         .rmd_data(names(x), quote=TRUE), ")")
 
-# an R code chunk
 .rmd_chunk <- function(label, opt, code)
 {
     c(paste0("```{r ", label, if (nzchar(opt)) paste0(", ", opt) else "", "}"),
@@ -1188,29 +1137,26 @@ code{background:#f4f4f4;padding:1px 4px}'
         .rmd_chunk("setup", "include=FALSE",
             paste0("# set 'echo=TRUE' to show the code of each chart\n",
                 "knitr::opts_chunk$set(echo=FALSE, comment=NA)")))
-    body <- lapply(seq_along(sec), function(i)
+    for (i in seq_along(sec))
     {
         s <- sec[[i]]
-        v <- lapply(seq_along(s$items), function(j)
-            .rmd_item(s$items[[j]], paste0("s", i, "_", j)))
-        c(paste("##", s$title), "", unlist(v))
-    })
-    c(ans, unlist(body), "---", "",
-        "Generated by `GDSAnnotator::seqAnnotReport()`")
-}
-
-# the R Markdown lines of a report item
-.rmd_item <- function(it, lab)
-{
-    switch(it$type,
-        kv = .rmd_keyval(it, lab),
-        bar = .rmd_bar(it, lab),
-        col = .rmd_col(it, lab),
-        table = .rmd_table(it, lab),
-        basechange = .rmd_base_change(it, lab),
-        note = c(if (isTRUE(it$bold)) paste0("**", it$text, "**")
-            else paste0("*", it$text, "*"), ""),
-        NULL)
+        ans <- c(ans, paste("##", s$title), "")
+        for (j in seq_along(s$items))
+        {
+            it <- s$items[[j]]
+            lab <- paste0("s", i, "_", j)
+            ans <- c(ans, switch(it$type,
+                kv = .rmd_keyval(it, lab),
+                bar = .rmd_bar(it, lab),
+                col = .rmd_col(it, lab),
+                table = .rmd_table(it, lab),
+                basechange = .rmd_base_change(it, lab),
+                note = c(if (isTRUE(it$bold)) paste0("**", it$text, "**")
+                    else paste0("*", it$text, "*"), ""),
+                NULL))
+        }
+    }
+    c(ans, "---", "", "Generated by `GDSAnnotator::seqAnnotReport()`")
 }
 
 
@@ -1218,14 +1164,6 @@ code{background:#f4f4f4;padding:1px 4px}'
 # Generate a summary report from a GDS file
 #
 
-# Write the summary report
-#   stat: a SeqAnnotStat object, or the GDS file(s) passed to seqAnnotStat()
-#   out_fn: the output file name
-#   format: the output format, guessed from the file extension if "auto"
-#   title: the title of the report
-#   parallel, bsize: passed to seqAnnotStat() if 'stat' is not a SeqAnnotStat
-#   verbose: if TRUE, show the progress information
-# return the normalized output file name invisibly
 seqAnnotReport <- function(stat, out_fn="annot_summary.html",
     format=c("auto", "html", "markdown", "rmd"),
     title="GDSAnnotator Summary Report", parallel=FALSE, bsize=100000L,

@@ -13,87 +13,6 @@
 # Convert FAVOR CSV files to a SeqArray GDS file
 #
 
-# the columns of a FAVOR CSV file identifying the variants
-.favor_col_csv <- c("position", "chromosome", "ref_vcf", "alt_vcf",
-    "variant_vcf")
-
-# the GDS nodes of the variants, as used by .gds_new()
-.gds_var_nodes <- c("variant.id", "position", "chromosome", "allele",
-    "annotation/id", "annotation/qual", "annotation/filter")
-
-# check that all the CSV files have the same header line
-.check_csv_header <- function(fn)
-{
-    if (length(fn) < 2L) return(invisible())
-    hd <- lapply(fn, readLines, n=1L)
-    if (length(hd[[1L]]) != 1L)
-        stop("No header line in the first file of 'csv_fn'.")
-    ok <- vapply(hd, identical, FALSE, y=hd[[1L]])
-    if (!all(ok))
-    {
-        stop(sprintf("The header of 'csv_fn[%d]' differs from ",
-            which(!ok)[1L]), "the header of the first file.")
-    }
-    invisible()
-}
-
-# append the variants and the annotations of a FAVOR CSV file
-.favor_append <- function(outfile, nd_root, df, nm_others, first,
-    use_float32, compress, verbose)
-{
-    if (!all(.favor_col_csv %in% colnames(df)))
-    {
-        stop("The csv header should contain all of ",
-            paste(.favor_col_csv, collapse=", "), ".")
-    }
-    # basic
-    n <- nrow(df)
-    val <- list(
-        if ("vid" %in% colnames(df)) df$vid else seq_len(n),
-        df$position, df$chromosome, paste0(df$ref_vcf, ",", df$alt_vcf),
-        df$variant_vcf, rep(NaN, n), rep(1L, n))
-    for (i in seq_along(val))
-        append.gdsn(index.gdsn(outfile, .gds_var_nodes[i]), val[[i]])
-    # annotation
-    for (nm in nm_others)
-    {
-        if (verbose) .cat("    [adding ", nm, "]\t")
-        v <- .na_to_empty(df[[nm]])
-        if (first)
-        {
-            st <- typeof(v)
-            if (st=="double" && isTRUE(use_float32)) st <- "float32"
-            nd <- add.gdsn(nd_root, nm, v, storage=st, compress=compress)
-        } else {
-            nd <- append.gdsn(index.gdsn(nd_root, nm), v)
-        }
-        if (verbose)
-            message("    ", paste(capture.output(nd), collapse="\n    "))
-    }
-    invisible()
-}
-
-# switch the GDS nodes to the read mode, and add the MD5 digests
-.finish_nodes <- function(nodes)
-{
-    for (nd in nodes)
-    {
-        readmode.gdsn(nd)
-        digest.gdsn(nd, "md5", action="add")
-    }
-    invisible()
-}
-
-# Convert the FAVOR CSV files to a SeqArray GDS file
-#   csv_fn: the file name(s) of the FAVOR CSV files (possibly gzip-compressed)
-#       with the same header
-#   out_fn: the output GDS file name
-#   compress: the compression method of the output file, "LZMA", "ZIP" or
-#       "none"
-#   root: the folder under "annotation/info" for the annotations, "" for none
-#   use_float32: if TRUE, store the floating-point numbers as 32-bit float
-#   verbose: if TRUE, show the progress information
-# return the normalized output file name invisibly
 seqFAVOR2GDS <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     root="FAVOR", use_float32=TRUE, verbose=TRUE)
 {
@@ -104,34 +23,125 @@ seqFAVOR2GDS <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
     stopifnot(is.character(root), length(root)==1L)
     stopifnot(is.logical(use_float32), length(use_float32)==1L)
     stopifnot(is.logical(verbose), length(verbose)==1L, !is.na(verbose))
-    .check_csv_header(csv_fn)
-    opt <- .compress_opt(compress)
+    if (length(csv_fn) > 1L)
+    {
+        # check the header of each file, should be the same!
+        s0 <- readLines(csv_fn[1L], n=1L)
+        if (length(s0) != 1L)
+            stop("No header line in the first file of 'csv_fn'.")
+        for (i in 2L:length(csv_fn))
+        {
+            s <- readLines(csv_fn[i], n=1L)
+            if (length(s)!=1L || s!=s0)
+            {
+                stop(sprintf("The header of 'csv_fn[%d]' differs from ", i),
+                    "the header of the first file.")
+            }
+        }
+    }
+
+    # compression algorithm
+    map_compress <- c(LZMA="LZMA_RA", ZIP="ZIP_RA", none="")
+    compress1 <- compress2 <- map_compress[compress]
+    if (compress=="LZMA") compress1 <- "ZIP_RA"  # reduce memory usage
+
     # create the gds file
-    .conv_begin("FAVOR CSV => GDS", out_fn, compress, verbose)
-    outfile <- .gds_new(out_fn, opt$first, var_id_st="double")
+    if (verbose)
+    {
+        .cat("##< ", tm())
+        .cat("FAVOR CSV => GDS")
+        .cat("    output: ", out_fn)
+        .cat("    compression: ", compress)
+    }
+    outfile <- .gds_new(out_fn, compress1, var_id_st="double")
     on.exit(closefn.gds(outfile))
+    nm_lst <- c("position", "chromosome", "ref_vcf", "alt_vcf", "variant_vcf")
     nd_root <- index.gdsn(outfile, "annotation/info")
     if (!is.na(root) && root!="")
         nd_root <- addfolder.gdsn(nd_root, root)
-    # load the csv files one by one, to limit the memory usage
+
+    # load csv
     nm_others <- character()
     for (i in seq_along(csv_fn))
     {
         if (verbose) .cat("Reading ", csv_fn[i], " ...")
         df <- read.csv(csv_fn[i])
         if (verbose) .cat("    ", nrow(df), " x ", ncol(df))
+        if (!all(nm_lst %in% colnames(df)))
+        {
+            stop("The csv header should contain all of ",
+                paste(nm_lst, collapse=", "), ".")
+        }
         if (i == 1L)
-            nm_others <- setdiff(colnames(df), .favor_col_csv)
-        .favor_append(outfile, nd_root, df, nm_others, i==1L, use_float32,
-            opt$first, verbose)
+            nm_others <- setdiff(colnames(df), nm_lst)
+        # basic
+        if ("vid" %in% colnames(df))
+        {
+            append.gdsn(index.gdsn(outfile, "variant.id"), df$vid)
+        } else {
+            append.gdsn(index.gdsn(outfile, "variant.id"), seq_len(nrow(df)))
+        }
+        append.gdsn(index.gdsn(outfile, "position"), df$position)
+        append.gdsn(index.gdsn(outfile, "chromosome"), df$chromosome)
+        append.gdsn(index.gdsn(outfile, "allele"),
+            paste0(df$ref_vcf, ",", df$alt_vcf))
+        append.gdsn(index.gdsn(outfile, "annotation/id"), df$variant_vcf)
+        append.gdsn(index.gdsn(outfile, "annotation/qual"), rep(NaN, nrow(df)))
+        append.gdsn(index.gdsn(outfile, "annotation/filter"), rep(1L, nrow(df)))
+        # annotation
+        for (nm in nm_others)
+        {
+            if (verbose) .cat("    [adding ", nm, "]\t")
+            v <- df[[nm]]
+            if (i == 1L)
+            {
+                st <- typeof(v)
+                if (st=="double" && isTRUE(use_float32)) st <- "float32"
+                nd <- suppressWarnings(
+                    add.gdsn(nd_root, nm, v, storage=st, compress=compress1))
+            } else {
+                nd <- suppressWarnings(append.gdsn(index.gdsn(nd_root, nm), v))
+            }
+            if (verbose)
+                message("    ", paste(capture.output(nd), collapse="\n    "))
+        }
         remove(df)
     }
+
     # close the nodes
-    .finish_nodes(c(lapply(.gds_var_nodes, index.gdsn, node=outfile),
-        lapply(nm_others, index.gdsn, node=nd_root)))
+    for (nm in c("variant.id", "position", "chromosome", "allele",
+            "annotation/id", "annotation/qual", "annotation/filter"))
+    {
+        nd <- index.gdsn(outfile, nm)
+        readmode.gdsn(nd)
+        digest.gdsn(nd, "md5", action="add")
+    }
+    for (nm in nm_others)
+    {
+        nd <- index.gdsn(nd_root, nm)
+        readmode.gdsn(nd)
+        digest.gdsn(nd, "md5", action="add")
+    }
+
     # recompress?
     on.exit()
-    .conv_end(out_fn, compress, opt$recompress, verbose, outfile=outfile)
+    if (compress1 != compress2)
+    {
+        if (verbose)
+            .cat("Recompressing (", tm(), ") ...")
+        closefn.gds(outfile)
+        cleanup.gds(out_fn, verbose=FALSE)
+        seqRecompress(out_fn, compress=compress, verbose=verbose)
+    } else {
+        if (verbose)
+            message("Optimize the access efficiency ...")
+        closefn.gds(outfile)
+        cleanup.gds(out_fn, verbose=verbose)
+    }
+
+    if (verbose) .cat("##> ", tm())
+    # output
+    invisible(normalizePath(out_fn))
 }
 
 
@@ -140,203 +150,14 @@ seqFAVOR2GDS <- function(csv_fn, out_fn, compress=c("LZMA", "ZIP", "none"),
 # Convert FAVOR tar file (containing CSV) to a SeqArray GDS file
 #
 
-# the columns of a FAVOR CSV file in a tar file identifying the variants
-.favor_col_tar <- c("variant_vcf", "chromosome", "position", "ref_vcf",
-    "alt_vcf")
-
 # open a file in the tar.gz file
-.tar_open <- function(tar_fn, sub_fn, tar_cmd="tar")
+tar_open <- function(tar_fn, sub_fn, tar_cmd="tar")
 {
     cmd <- paste(tar_cmd, "-xOzf", shQuote(tar_fn), shQuote(sub_fn))
     pipe(cmd, "rt")
 }
 
-# the CSV files to be read in the tar file, ordered by the number after "_"
-#   in the file names (e.g., "chr22_1.csv", "chr22_2.csv", ...)
-.favor_tar_files <- function(tar_fn, fn_in_tar, tar_cmd)
-{
-    if (!is.null(fn_in_tar))
-        return(unique(fn_in_tar))
-    fn <- untar(tar_fn, list=TRUE, tar=tar_cmd)
-    fn <- fn[grepl("\\.csv$", fn, ignore.case=TRUE)]
-    s <- basename(fn)
-    m <- regexpr("_\\d+", s)
-    n <- rep(NA_integer_, length(s))
-    n[m > 0L] <- as.integer(substring(regmatches(s, m), 2L))
-    fn[order(n)]
-}
 
-# create the annotation nodes with the types and the descriptions in
-#   'favor_csv_header.csv'; each node has an index node, since a variant
-#   without a value is not stored
-.favor_tar_nodes <- function(nd_info, nm, favor_head, use_float32)
-{
-    i <- match(nm, favor_head$column)
-    tp <- favor_head$type[i]
-    tp_vcf <- c(character="String", integer="Integer", numeric="Float")[tp]
-    tp[tp == "numeric"] <- if (use_float32) "float32" else "float64"
-    desp <- favor_head$description[i]
-    desp[is.na(desp)] <- ""
-    # the data node and its index node, created one after the other
-    nd <- lapply(seq_along(nm), function(k)
-    {
-        n <- add.gdsn(nd_info, nm[k], storage=tp[k], compress="ZIP_ra")
-        put.attr.gdsn(n, "Number", ".")
-        put.attr.gdsn(n, "Type", tp_vcf[[k]])
-        put.attr.gdsn(n, "Description", desp[k])
-        list(n, add.gdsn(nd_info, paste0("@", nm[k]), storage="bit1",
-            compress="ZIP_ra", visible=FALSE))
-    })
-    names(nd) <- nm
-    list(data=lapply(nd, `[[`, 1L), index=lapply(nd, `[[`, 2L))
-}
-
-# append the variants and the annotations of a block of a FAVOR CSV file
-.favor_tar_append <- function(outfile, nodes, df, nline)
-{
-    # basic
-    n <- nrow(df)
-    val <- list(nline + seq_len(n), df$position, df$chromosome,
-        paste0(df$ref_vcf, ",", df$alt_vcf),
-        if (is.null(df$rsid)) rep("", n) else df$rsid,
-        rep(NaN, n), rep(NA_integer_, n))
-    for (i in seq_along(val))
-        append.gdsn(index.gdsn(outfile, .gds_var_nodes[i]), val[[i]])
-    # annotation: only the values are stored, with an index node
-    for (nm in names(nodes$data))
-    {
-        v <- df[[nm]]
-        if (!is.null(v))
-        {
-            x <- if (is.character(v)) !is.na(v) & v!="" else is.finite(v)
-            if (any(x))
-                append.gdsn(nodes$data[[nm]], v[x])
-        } else {
-            x <- rep(0L, n)
-        }
-        append.gdsn(nodes$index[[nm]], x)
-    }
-    invisible()
-}
-
-# read and check the header line of a FAVOR CSV file
-.favor_tar_header <- function(con, favor_head, verbose)
-{
-    hr <- unlist(strsplit(readLines(con, n=1L), ",", fixed=TRUE))
-    if (verbose)
-        .cat("  (", length(hr), " columns)")
-    if (anyDuplicated(hr))
-        stop("Duplicated column names!")
-    if (!all(.favor_col_tar %in% hr))
-    {
-        stop("The csv file should have the columns: ",
-            paste(.favor_col_tar, collapse=", "))
-    }
-    if (!all(hr %in% favor_head$column))
-    {
-        stop("No type defined for the column(s): ",
-            paste(setdiff(hr, favor_head$column), collapse=","))
-    }
-    hr
-}
-
-# read a FAVOR CSV file in the tar file block by block
-.favor_tar_read <- function(tar_fn, fn_in_tar, i, tar_cmd, outfile, nd_info,
-    favor_head, nodes, nline, use_float32, block_size, verbose)
-{
-    if (verbose)
-    {
-        message("Loading file (", i, "):\n    ", fn_in_tar[i],
-            appendLF=FALSE)
-    }
-    con <- .tar_open(tar_fn, fn_in_tar[i], tar_cmd)
-    on.exit(close(con))
-    hr <- .favor_tar_header(con, favor_head, verbose)
-    # first file? create new nodes
-    if (is.null(nodes))
-    {
-        nodes <- .favor_tar_nodes(nd_info, setdiff(hr, .favor_col_tar),
-            favor_head, use_float32)
-    }
-    # column types
-    hr_type <- favor_head$type[match(hr, favor_head$column)]
-    ii <- 0L
-    while (NROW(df <- read.csv(con, header=FALSE, nrows=block_size,
-        colClasses=hr_type)))
-    {
-        names(df) <- hr
-        .favor_tar_append(outfile, nodes, df, nline)
-        # show progress
-        nline <- nline + nrow(df)
-        remove(df)
-        ii <- ii + 1L
-        if (ii >= 100L)
-        {
-            if (verbose)
-            {
-                .cat("    ", prettyNum(nline, big.mark=",", scientific=FALSE),
-                    "\t", .tm())
-            }
-            ii <- 0L
-            gc(verbose=FALSE, reset=TRUE, full=TRUE)
-        }
-        # check EOF
-        s <- readLines(con, 1L)
-        if (length(s)) pushBack(s, con) else break
-    }
-    if (verbose)
-    {
-        .cat("    ", prettyNum(nline, big.mark=",", scientific=FALSE),
-            "\t", .tm())
-    }
-    list(nodes=nodes, nline=nline)
-}
-
-# finish writing the variants: RLE-coded chromosomes (for faster loading),
-#   and remove the index nodes not needed (a value for every variant)
-.favor_tar_finish <- function(outfile, verbose)
-{
-    gc(verbose=FALSE, reset=TRUE, full=TRUE)
-    sync.gds(outfile)
-    seqOptimize(outfile, "chromosome", verbose=FALSE)
-    nvar <- objdesp.gdsn(index.gdsn(outfile, "variant.id"))$dim
-    nm <- ls.gdsn(index.gdsn(outfile, "annotation/info"))
-    for (s in nm[!grepl("^@", nm)])
-    {
-        nd <- index.gdsn(outfile, paste0("annotation/info/", s))
-        if (identical(objdesp.gdsn(nd)$dim, nvar))
-            delete.gdsn(index.gdsn(outfile, paste0("annotation/info/@", s)))
-    }
-    if (verbose) message("Loading Done.")
-    invisible()
-}
-
-# create the output file of seqFAVORTar2GDS()
-.favor_tar_new <- function(out_fn, root)
-{
-    outfile <- .gds_new(out_fn, "ZIP_ra")
-    on.exit(closefn.gds(outfile))
-    add.gdsn(index.gdsn(outfile, "description"), "reference", "GRCh38",
-        visible=FALSE)
-    if (root != "")
-        addfolder.gdsn(index.gdsn(outfile, "annotation/info"), root)
-    on.exit()
-    outfile
-}
-
-# Convert a FAVOR tar file of CSV files to a SeqArray GDS file
-#   tar_fn: the file name of the tar file (gzip-compressed) of the FAVOR CSV
-#       files
-#   out_fn: the output GDS file name
-#   fn_in_tar: the CSV file names in the tar file, or NULL for all
-#   compress: the compression method of the output file, "LZMA", "ZIP" or
-#       "none"
-#   root: the folder under "annotation/info" for the annotations, "" for none
-#   use_float32: if TRUE, store the floating-point numbers as 32-bit float
-#   block_size: the number of lines read from a CSV file at a time
-#   tar_cmd: the tar program, "tar" if it is ""
-#   verbose: if TRUE, show the progress information
-# return the normalized output file name invisibly
 seqFAVORTar2GDS <- function(tar_fn, out_fn, fn_in_tar=NULL,
     compress=c("LZMA", "ZIP", "none"), root="", use_float32=TRUE,
     block_size=100000L, tar_cmd=Sys.getenv("TAR"), verbose=TRUE)
@@ -352,12 +173,37 @@ seqFAVORTar2GDS <- function(tar_fn, out_fn, fn_in_tar=NULL,
     stopifnot(is.numeric(block_size), length(block_size)==1L, block_size>=1000)
     stopifnot(is.character(tar_cmd), length(tar_cmd)==1L)
     stopifnot(is.logical(verbose), length(verbose)==1L, !is.na(verbose))
+
+    # create the gds file
     if (verbose)
-        .cat("##< ", .tm(), "\nFAVOR csv tar => GDS\n    input: ", tar_fn,
-            "\n    using the program ", shQuote(tar_cmd))
+    {
+        .cat("##< ", tm())
+        .cat("FAVOR csv tar => GDS")
+        .cat("    input: ", tar_fn)
+        .cat("    using the program ", shQuote(tar_cmd))
+    }
+
     # list the file in tar
     if (tar_cmd == "") tar_cmd <- "tar"
-    fn_in_tar <- .favor_tar_files(tar_fn, fn_in_tar, tar_cmd)
+    if (is.null(fn_in_tar))
+    {
+        fn_in_tar <- untar(tar_fn, list=TRUE, tar=tar_cmd)
+        fn_in_tar <- fn_in_tar[grepl("\\.csv$", fn_in_tar, ignore.case=TRUE)]
+        if (length(fn_in_tar))
+        {
+            n <- vapply(basename(fn_in_tar), function(s)
+            {
+                i <- regexpr("_\\d+", s)
+                if (i > 0L)
+                    as.integer(gsub("^_", "", regmatches(s, i)))
+                else
+                    NA_integer_
+            }, 0L)
+            fn_in_tar <- fn_in_tar[order(n)]
+        }
+    } else {
+        fn_in_tar <- unique(fn_in_tar)
+    }
     if (length(fn_in_tar) == 0L)
         stop("No csv files in the input tar file.")
     if (verbose)
@@ -366,23 +212,208 @@ seqFAVORTar2GDS <- function(tar_fn, out_fn, fn_in_tar=NULL,
         .cat("    output: ", out_fn)
         .cat("    compression: ", compress)
     }
+
     # load FAVOR CSV header
     favor_head <- read.csv(system.file("extdata", "favor_csv_header.csv",
             package="GDSAnnotator", mustWork=TRUE), header=TRUE)
+
     # create the output
-    outfile <- .favor_tar_new(out_fn, root)
+    outfile <- createfn.gds(out_fn)
     on.exit(closefn.gds(outfile))
-    nd_info <- index.gdsn(outfile, "annotation/info")
-    if (root != "") nd_info <- index.gdsn(nd_info, root)
-    # read the files one by one (the nodes are created with the first file)
-    r <- list(nodes=NULL, nline=0L)
-    for (i in seq_along(fn_in_tar))
+    put.attr.gdsn(outfile$root, "FileFormat", "SEQ_ARRAY")
+    put.attr.gdsn(outfile$root, "FileVersion", "v1.0")
+    nd <- addfolder.gdsn(outfile, "description")
+    add.gdsn(nd, "reference", "GRCh38", visible=FALSE)
+    # add sample.id
+    add.gdsn(outfile, "sample.id", integer())
+    # add variant.id
+    nd_varid <- add.gdsn(outfile, "variant.id", storage="int32",
+        compress="ZIP_ra")
+    # add position
+    nd_pos <- add.gdsn(outfile, "position", storage="int32",
+        compress="ZIP_ra")
+    # add chromosome
+    nd_chr <- add.gdsn(outfile, "chromosome", storage="string",
+        compress="ZIP_ra")
+    # add allele
+    nd_allele <- add.gdsn(outfile, "allele", storage="string",
+        compress="ZIP_ra")
+    # add a folder for genotypes
+    nd_geno <- addfolder.gdsn(outfile, "genotype")
+    put.attr.gdsn(nd_geno, "VariableName", "GT")
+    put.attr.gdsn(nd_geno, "Description", "Genotype")
+    # add phase folder
+    nd_phase <- addfolder.gdsn(outfile, "phase")
+    # add annotation folder
+    nd_annot <- addfolder.gdsn(outfile, "annotation")
+    # add rsID
+    nd_id <- add.gdsn(nd_annot, "id", storage="string", compress="ZIP_ra")
+    # add qual
+    nd_qual <- add.gdsn(nd_annot, "qual", storage="float", compress="ZIP_ra")
+    # add filter
+    nd_flt <- add.gdsn(nd_annot, "filter", storage="int32", compress="ZIP_ra")
+    put.attr.gdsn(nd_flt, "R.class", "factor")
+    put.attr.gdsn(nd_flt, "R.levels", "PASS")
+    put.attr.gdsn(nd_flt, "Description", "All filters passed")
+    # VCF INFO
+    nd_info <- addfolder.gdsn(nd_annot, "info")
+    if (root != "")
+        nd_info <- addfolder.gdsn(nd_info, root)
+    nd_lst <- nd_idx_lst <- list()
+
+    nm_head <- c("variant_vcf", "chromosome", "position", "ref_vcf", "alt_vcf")
+    nline <- 0L
+
+    # for-loop for each file
+    for (i_fn in seq_along(fn_in_tar))
     {
-        r <- .favor_tar_read(tar_fn, fn_in_tar, i, tar_cmd, outfile, nd_info,
-            favor_head, r$nodes, r$nline, use_float32, block_size, verbose)
+        fn <- fn_in_tar[i_fn]
+        if (verbose)
+            message("Loading file (", i_fn, "):\n    ", fn, appendLF=FALSE)
+        InF <- tar_open(tar_fn, fn, tar_cmd)
+        # check the header
+        hr <- readLines(InF, n=1L)
+        hr <- unlist(strsplit(hr, ",", fixed=TRUE))
+        if (verbose)
+            .cat("  (", length(hr), " columns)")
+        if (anyDuplicated(hr))
+            stop("Duplicated column names!")
+        if (!all(nm_head %in% hr))
+        {
+            stop("The csv file should have the columns: ",
+                paste(nm_head, collapse=", "))
+        }
+        if (!all(hr %in% favor_head$column))
+        {
+            stop("No type defined for the column(s): ",
+                paste(setdiff(hr, favor_head$column), collapse=","))
+        }
+        # first time? create new nodes
+        if (i_fn == 1L)
+        {
+            nm_others <- setdiff(hr, nm_head)
+            for (nm in nm_others)
+            {
+                i <- which(nm == favor_head$column)
+                tp <- favor_head$type[i]
+                tp_vcf <- c(character="String", integer="Integer",
+                    numeric="Float")[tp]
+                if (tp == "numeric")
+                    tp <- ifelse(use_float32, "float32", "float64")
+                nd <- add.gdsn(nd_info, nm, storage=tp, compress="ZIP_ra")
+                put.attr.gdsn(nd, "Number", ".")
+                put.attr.gdsn(nd, "Type", tp_vcf)
+                s <- favor_head$description[i]
+                if (is.na(s)) s <- ""
+                put.attr.gdsn(nd, "Description", s)
+                nd_lst[[nm]] <- nd
+                nd_idx_lst[[nm]] <- add.gdsn(nd_info, paste0("@", nm),
+                    storage="bit1", compress="ZIP_ra", visible=FALSE)
+            }
+        }
+        # column types
+        hr_type <- favor_head$type[match(hr, favor_head$column)]
+        ii <- 0L
+        # read
+        while(NROW(df <- read.csv(InF, header=FALSE, nrows=block_size,
+            colClasses=hr_type)))
+        {
+            names(df) <- hr
+            # basic
+            append.gdsn(nd_varid, nline + seq_len(nrow(df)))
+            append.gdsn(nd_pos, df$position)
+            append.gdsn(nd_chr, df$chromosome)
+            append.gdsn(nd_allele, paste0(df$ref_vcf, ",", df$alt_vcf))
+            if (!is.null(df$rsid))
+                append.gdsn(nd_id, df$rsid)
+            else
+                append.gdsn(nd_id, rep("", nrow(df)))
+            append.gdsn(nd_qual, rep(NaN, nrow(df)))
+            append.gdsn(nd_flt, rep(NA_integer_, nrow(df)))
+            # annotation
+            for (nm in nm_others)
+            {
+                v <- df[[nm]]
+                if (!is.null(v))
+                {
+                    if (is.character(v))
+                        x <- !is.na(v) & v!=""
+                    else
+                        x <- is.finite(v)
+                    if (any(x))
+                        append.gdsn(nd_lst[[nm]], v[x])
+                } else {
+                    x <- rep(0L, nrow(df))
+                }
+                append.gdsn(nd_idx_lst[[nm]], x)
+            }
+            # show progress
+            nline <- nline + nrow(df)
+            remove(df)
+            ii <- ii + 1L
+            if (ii >= 100L)
+            {
+                if (verbose)
+                {
+                    .cat("    ",
+                        prettyNum(nline, big.mark=",", scientific=FALSE),
+                        "\t", tm())
+                }
+                ii <- 0L
+                gc(verbose=FALSE, reset=TRUE, full=TRUE)
+            }
+            # check EOF
+            s <- readLines(InF, 1L)
+            if (length(s)) pushBack(s, InF) else break
+        }
+        # close the pipe
+        close(InF)
+        if (verbose)
+        {
+            .cat("    ", prettyNum(nline, big.mark=",", scientific=FALSE),
+                "\t", tm())
+        }
     }
-    .favor_tar_finish(outfile, verbose)
+
+    gc(verbose=FALSE, reset=TRUE, full=TRUE)
+    # get the number of variants
+    sync.gds(outfile)
+    # RLE-coded chromosome (for faster loading)
+    seqOptimize(outfile, "chromosome", verbose=FALSE)
+    # the number of variants
+    nvar <- objdesp.gdsn(index.gdsn(outfile, "variant.id"))$dim
+
+    # whether has missing values or not
+    nm_lst <- ls.gdsn(index.gdsn(outfile, "annotation/info"))
+    nm_lst <- nm_lst[!grepl("^@", nm_lst)]
+    for (nm in nm_lst)
+    {
+        nd <- index.gdsn(outfile, paste0("annotation/info/", nm))
+        if (identical(objdesp.gdsn(nd)$dim, nvar))
+        {
+            # delete the indexing node
+            delete.gdsn(index.gdsn(outfile, paste0("annotation/info/@", nm)))
+        }
+    }
+    if (verbose) message("Loading Done.")
+
     # recompress?
     on.exit()
-    .conv_end(out_fn, compress, compress=="LZMA", verbose, outfile=outfile)
+    if (compress == "LZMA")
+    {
+        if (verbose)
+            .cat("Recompressing (", tm(), ") ...")
+        closefn.gds(outfile)
+        cleanup.gds(out_fn, verbose=FALSE)
+        seqRecompress(out_fn, compress=compress, verbose=verbose)
+    } else {
+        if (verbose)
+            message("Optimize the access efficiency ...")
+        closefn.gds(outfile)
+        cleanup.gds(out_fn, verbose=verbose)
+    }
+
+    if (verbose) .cat("##> ", tm())
+    # output
+    invisible(normalizePath(out_fn))
 }
