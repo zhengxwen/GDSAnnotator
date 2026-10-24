@@ -3,7 +3,7 @@
 import(methods)
 import(gdsfmt)
 import(SeqArray)
-importFrom(utils, head, read.csv, untar, capture.output)
+importFrom(utils, head, read.csv, untar)
 importFrom(parallel, makeCluster, stopCluster, clusterCall, detectCores)
 importFrom(IRanges, IRanges, CharacterList, which, start)
 importFrom(S4Vectors, DataFrame, Rle, mcols)

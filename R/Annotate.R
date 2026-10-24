@@ -74,21 +74,21 @@ ann_pos_allele <- function(gds, chr, pos, ref, alt, varnm, verbose=TRUE)
     {
         if (verbose)
         {
-            message("[", basename(gds$filename), "] ", appendLF=FALSE)
+            cat("[", basename(gds$filename), "] ", sep="")
             n <- seqSummary(gds, "genotype", verbose=FALSE)$seldim[3L]
             .cat(" # of variants found: ", n)
         }
         l_verbose <- isTRUE(verbose) && (length(varnm)>1L)
         if (l_verbose)
-            message("[", length(varnm), "] ", appendLF=FALSE)
+            cat("[", length(varnm), "] ", sep="")
         ans <- lapply(varnm, function(nm)
         {
-            if (l_verbose) message(".", appendLF=FALSE)
+            if (l_verbose) cat(".")
             seqGetData(gds, nm, .tolist=NA)
         })
         names(ans) <- colnm
         ans <- DataFrame(ans)
-        if (l_verbose) message()
+        if (l_verbose) cat("\n")
         # ii maps each input to the filtered set row (NA = not found)
         # drop=FALSE: keep a DataFrame even when a single annotation is
         #   requested
@@ -698,17 +698,17 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
     if (is.null(varnm)) varnm <- character()
     stopifnot(is.character(varnm))
     # read data
-    if (isTRUE(verbose)) message("Reading chromosome", appendLF=FALSE)
+    if (isTRUE(verbose)) cat("Reading chromosome")
     chr <- seqGetData(object, "$chromosome")
-    if (isTRUE(verbose)) message(", position", appendLF=FALSE)
+    if (isTRUE(verbose)) cat(", position")
     pos <- seqGetData(object, "position")
-    if (isTRUE(verbose)) message(", reference allele", appendLF=FALSE)
+    if (isTRUE(verbose)) cat(", reference allele")
     ref <- seqGetData(object, "$ref")
-    if (isTRUE(verbose)) message(", alternative allele", appendLF=FALSE)
+    if (isTRUE(verbose)) cat(", alternative allele")
     alt <- seqGetData(object, "$alt")
-    if (isTRUE(verbose)) message()
+    if (isTRUE(verbose)) cat("\n")
     # process
-    if (isTRUE(verbose)) message("Processing annotation ...")
+    if (isTRUE(verbose)) cat("Processing annotation ...\n")
     if (isFALSE(add_to_gds) || length(varnm)==0L)
     {
         # return DataFrame
@@ -825,16 +825,15 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
         {
             if (verbose)
             {
-                message("    adding ", i, "/", length(varnm), " ",
-                    sQuote(colnm[i]), " (", tm(), ")\n    ", appendLF=FALSE)
+                cat("    adding ", i, "/", length(varnm), " ",
+                    sQuote(colnm[i]), " (", tm(), ")\n    ", sep="")
             }
             # write block by block, so that only one block is held in memory
             #   instead of the annotation of all variants
             gen <- function(k)
             {
                 if (k > nblock) return(NULL)  # no more block
-                if (verbose && (k %in% dot_block))
-                    message(".", appendLF=FALSE)
+                if (verbose && (k %in% dot_block)) cat(".")
                 get_block(i, k)
             }
             # suppress the warnings from writing the annotation data, e.g.,
@@ -845,7 +844,7 @@ ann_gdsfile <- function(object, annot_gds, varnm, add_to_gds=FALSE,
                 index.gdsn(outgds, dirname(p)), basename(p), gen, n_total,
                 tmpl[[i]], lv[[i]]))
             if (verbose)
-                .cat(capture.output(print(n, attribute=FALSE)))
+                print(n, attribute=FALSE)
         }
         # return
         invisible()
@@ -898,7 +897,7 @@ ann_GRanges <- function(object, annot_gds, varnm, ..., verbose=TRUE)
     # verbose
     l_verbose <- isTRUE(verbose) && (length(varnm)>1L)
     if (l_verbose)
-        message("[", length(varnm), "] ", appendLF=FALSE)
+        cat("[", length(varnm), "] ", sep="")
     # GDS node names
     colnm <- names(varnm)
     if (is.null(colnm)) colnm <- varnm
@@ -911,13 +910,13 @@ ann_GRanges <- function(object, annot_gds, varnm, ..., verbose=TRUE)
         {
             DataFrame(lapply(varnm, function(nm)
             {
-                if (l_verbose) message(".", appendLF=FALSE)
+                if (l_verbose) cat(".")
                 seqGetData(gds, nm, .tolist=NA)
             }))
         } else
             NULL
     })
-    if (l_verbose) message()
+    if (l_verbose) cat("\n")
     # output
     ans <- do.call(rbind, ans)
     if (!is.null(ans)) names(ans) <- colnm
@@ -944,7 +943,7 @@ ann_IRanges <- function(object, annot_gds, varnm, chr, ..., verbose=TRUE)
     # verbose
     l_verbose <- isTRUE(verbose) && (length(varnm)>1L)
     if (l_verbose)
-        message("[", length(varnm), "] ", appendLF=FALSE)
+        cat("[", length(varnm), "] ", sep="")
     # GDS node names
     colnm <- names(varnm)
     if (is.null(colnm)) colnm <- varnm
@@ -957,13 +956,13 @@ ann_IRanges <- function(object, annot_gds, varnm, chr, ..., verbose=TRUE)
         {
             DataFrame(lapply(varnm, function(nm)
             {
-                if (l_verbose) message(".", appendLF=FALSE)
+                if (l_verbose) cat(".")
                 seqGetData(gds, nm, .tolist=NA)
             }))
         } else
             NULL
     })
-    if (l_verbose) message()
+    if (l_verbose) cat("\n")
     # output
     ans <- do.call(rbind, ans)
     if (!is.null(ans)) names(ans) <- colnm
@@ -1062,14 +1061,14 @@ seqAnnotateGDS <- function(gds_fn, annot_gds, varnm, add_to_gds=FALSE,
     # check
     stopifnot(is.character(gds_fn), length(gds_fn)==1L)
     if (isTRUE(verbose))
-        message("Open ", sQuote(gds_fn), appendLF=FALSE)
+        cat("Open", sQuote(gds_fn))
     gds <- seqOpen(gds_fn, readonly=!isTRUE(add_to_gds))
     on.exit(seqClose(gds))
     if (isTRUE(verbose))
     {
         dm <- seqSummary(gds, "genotype", verbose=FALSE)$dim
-        message(" [", prettyNum(dm[3L], big.mark=",", scientific=FALSE),
-            " variants]")
+        cat(" [", prettyNum(dm[3L], big.mark=",", scientific=FALSE),
+            " variants]\n", sep="")
     }
     if (isTRUE(add_to_gds) && isTRUE(cleanup))
     {
